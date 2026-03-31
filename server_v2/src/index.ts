@@ -1,4 +1,4 @@
-	import type { AnyDict, Engine, IRequest, User } from '@interfaces/types';
+import type { AnyDict, Engine, IRequest, User } from '@interfaces/types';
 import * as fs from 'fs';
 import type z from 'zod';
 import getConfig from './config/env';

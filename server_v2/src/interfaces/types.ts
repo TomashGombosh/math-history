@@ -1,7 +1,6 @@
 import type { AppConfig } from '../config/types';
 import type * as consts from '../config/consts';
 
-
 export interface StringDict {
 	[key: string]: string;
 }

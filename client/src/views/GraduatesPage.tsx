@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { mockYears } from "../mocks/years";
 import { Seo } from "../lib/seo";
@@ -7,11 +6,7 @@ import "./GraduatesPage.css";
 type YearItem = { year: number; totalStudents: number; totalWithHonours: number };
 
 export default function GraduatesPage() {
-  const [years, setYears] = useState<YearItem[]>([]);
-
-  useEffect(() => {
-    setYears(mockYears);
-  }, []);
+  const years: YearItem[] = mockYears;
 
   return (
     <div className="graduates-page">

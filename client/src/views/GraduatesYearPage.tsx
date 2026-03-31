@@ -14,11 +14,10 @@ type YearItem = { year: number };
 export default function GraduatesYearPage() {
   const { year = "" } = useParams();
   const [yearInfo, setYearInfo] = useState<YearData | null>(null);
-  const [years, setYears] = useState<YearItem[]>([]);
+  const years: YearItem[] = mockYears;
 
   useEffect(() => {
     void apiGet<YearData>(`/api/graduates/${year}`).then(setYearInfo);
-    setYears(mockYears);
   }, [year]);
 
   return (
