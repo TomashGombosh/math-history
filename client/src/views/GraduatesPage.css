@@ -1,0 +1,24 @@
+.graduates-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+.years-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.year-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 140px;
+  padding: 12px 8px;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+}
+.year-card__year {
+  font-weight: bold;
+  margin-bottom: 8px;
+  color: #006d7a;
+}

@@ -1,75 +1,33 @@
-# Nuxt Minimal Starter
+# Math History Migration Setup
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
-
-## Setup
-
-Make sure to install dependencies:
+## Run Vue (Nuxt) and React Router together with Docker
 
 ```bash
-# npm
+docker compose up --build
+```
+
+- Vue/Nuxt app: `http://localhost:3000`
+- React Router app (migration client): `http://localhost:5173`
+- Postgres: `localhost:5432`
+
+## Run React Router client locally without Docker
+
+```bash
+cd client
 npm install
-
-# pnpm
-pnpm install
-
-# yarn
-yarn install
-
-# bun
-bun install
-```
-
-## Development Server
-
-Start the development server on `http://localhost:3000`:
-
-```bash
-# npm
 npm run dev
-
-# pnpm
-pnpm dev
-
-# yarn
-yarn dev
-
-# bun
-bun run dev
 ```
 
-## Production
+The React app uses the same API paths (`/api/*`) and is configured to proxy requests to the Nuxt container (`nuxt:3000`) in Docker.
 
-Build the application for production:
+## Current migration scope
 
-```bash
-# npm
-npm run build
-
-# pnpm
-pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
-```
-
-Locally preview production build:
-
-```bash
-# npm
-npm run preview
-
-# pnpm
-pnpm preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
-```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+- React Router app lives in `client/`
+- Route paths are mirrored from Vue:
+  - `/`
+  - `/teachers`
+  - `/teacher/:slug`
+  - `/graduates`
+  - `/graduates/:year`
+  - `/login`
+  - `/admin` and existing admin child paths
