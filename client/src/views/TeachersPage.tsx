@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Seo } from "../lib/seo";
 import { getMockTeachersPage } from "../mocks/teachers";
@@ -7,11 +6,7 @@ import "./TeachersPage.css";
 type Teacher = { id: number; slug: string; name: string; imageUrl?: string };
 
 export default function TeachersPage() {
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
-
-  useEffect(() => {
-    setTeachers(getMockTeachersPage(1, 24).teachers as Teacher[]);
-  }, []);
+  const teachers = getMockTeachersPage(1, 24).teachers as Teacher[];
 
   return (
     <div className="page-wrapper">

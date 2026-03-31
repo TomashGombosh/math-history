@@ -1,0 +1,56 @@
+{
+  "name": "math-history-server",
+  "version": "2.0.0",
+  "description": "Server for math history website using Serverless Framework",
+  "author": "UzNU",
+  "license": "MIT",
+  "private": false,
+  "scripts": {
+    "build": "npx tsc && npx tsc-alias",
+    "build:watch": "npx tsc-watch --onSuccess 'npx tsc-alias'",
+    "lint": "eslint . --ext ts --report-unused-disable-directives --max-warnings 0",
+    "format": "prettier --write '**/*.js' '**/*.ts' --ignore-path .prettierignore",
+    "format:check": "prettier '**/*.js' '**/*.ts' --ignore-path .prettierignore --check",
+    "test": "rm -rf .build && export NODE_ENV=test && npx tsc && npx tsc-alias && npx jest --config jest.config.cjs --runInBand",
+    "serve": "npx sls offline start --host 0.0.0.0 --region eu-north-1",
+    "dev": "npx concurrently -k -n BUILD,SLS 'npm:build:watch' 'npm:serve'"
+  },
+  "eslintConfig": {
+    "extends": "@serverless/eslint-config/node",
+    "root": false
+  },
+  "dependencies": {
+    "@aws-sdk/client-secrets-manager": "3.1006.0",
+    "dotenv": "17.2.3",
+    "zod": "4.3.6",
+    "zod-openapi": "5.4.6"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "9.9.0",
+    "@serverless/eslint-config": "5.1.0",
+    "@types/aws-lambda": "8.10.160",
+    "@types/jest": "30.0.0",
+    "@types/lambda-wrapper": "0.3.4",
+    "@types/node": "24.10.1",
+    "@typescript-eslint/eslint-plugin": "8.54.0",
+    "@typescript-eslint/parser": "8.54.0",
+    "@typescript-eslint/typescript-estree": "8.54.0",
+    "eslint": "9.39.2",
+    "eslint-plugin-import": "2.32.0",
+    "jest": "30.2.0",
+    "js-yaml": "4.1.1",
+    "lambda-wrapper": "0.3.0",
+    "nock": "14.0.10",
+    "nodemon": "3.1.11",
+    "prettier": "3.8.1",
+    "serverless": "4.31.2",
+    "serverless-api-gateway-throttling": "2.0.3",
+    "serverless-offline": "14.5.0",
+    "serverless-plugin-resource-tagging": "1.2.0",
+    "ts-node": "10.9.2",
+    "tsc-alias": "1.8.16",
+    "tsc-watch": "7.2.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.54.0"
+  }
+}

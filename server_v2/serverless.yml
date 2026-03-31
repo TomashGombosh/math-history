@@ -1,0 +1,67 @@
+org: afjsolution
+service: math-history-server
+frameworkVersion: "4"
+
+provider:
+  name: aws
+  region: ${aws:region}
+  runtime: nodejs24.x
+  architecture: arm64
+  logRetentionInDays: ${self:custom.logRetentionInDays.${sls:stage}, self:custom.logRetentionInDays.default}
+  versionFunctions: false
+  memorySize: 256
+  timeout: 29
+  iam:
+    role:
+      name: sls-tpl-${opt:stage, 'stage'}-role
+      statements:
+        # - Effect: Allow
+        #   Action:
+        #     - secretsmanager:GetSecretValue
+        #   Resource:
+        #     - arn:aws:secretsmanager:${aws:region}:${aws:accountId}:secret:${env:APP_SECRET_ID}*
+        - Effect: "Allow"
+          Action:
+            - "s3:ListBucket"
+          Resource:
+            - "arn:aws:s3:::${self:service}-data-${opt:stage, 'stage'}"
+        - Effect: "Allow"
+          Action:
+            - "s3:GetObject"
+            - "s3:GetObjectAcl"
+            - "s3:PutObject"
+            - "s3:PutObjectAcl"
+            - "s3:DeleteObject"
+          Resource:
+            - "arn:aws:s3:::${self:service}-data-${opt:stage, 'stage'}/*"
+  stackTags:
+    Name: "math-history-server"
+  environment:
+    NODE_ENV: ${env:NODE_ENV}
+  vpc:
+    securityGroupIds:
+      - ${env:SECURITY_GROUP_ID}
+    subnetIds:
+      - ${env:SUBNET_ID}
+
+functions:
+  api:
+    handler: .build/index.handler
+    events:
+      # NOTE: You can set specific paths and methods as needed
+      - http:
+          path: /{proxy+}
+          method: any
+
+plugins:
+  - serverless-plugin-resource-tagging
+  - serverless-offline
+  - serverless-api-gateway-throttling
+
+custom:
+  logRetentionInDays:
+    prod: 90
+    default: 7
+  apiGatewayThrottling:
+    maxRequestsPerSecond: ${env:RATE_LIMIT}
+    maxConcurrentRequests: ${env:BURST_LIMIT}
