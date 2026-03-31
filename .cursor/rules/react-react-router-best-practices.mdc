@@ -1,0 +1,23 @@
+---
+description: React and React Router architecture and coding standards
+globs: "**/*.{jsx,tsx}"
+alwaysApply: false
+---
+
+# React + React Router Best Practices
+
+- Build UI with small, single-purpose components. Keep pages as composition layers.
+- Keep routing centralized. Define route paths in one place and reuse constants.
+- Use route-level code splitting (`lazy` + `Suspense`) for major pages.
+- Guard protected routes with clear auth checks and predictable redirects.
+- Separate concerns:
+  - `components` for UI rendering,
+  - `hooks` for reusable logic,
+  - `services/api` for network access.
+- Do not duplicate fetch logic across pages; use shared data hooks or service functions.
+- Keep forms controlled and validated before submit. Show actionable error messages.
+- Handle loading, empty, and error states explicitly on every async screen.
+- Use stable keys for rendered lists; never use array index if identity exists.
+- Prefer composition over inheritance and avoid deep prop drilling (use context where justified).
+- Keep side effects inside `useEffect` with correct dependency arrays.
+- Avoid premature abstraction. Extract only after repetition appears.

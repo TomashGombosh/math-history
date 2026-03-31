@@ -1,0 +1,43 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: math-history-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: teachers_db
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d teachers_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  nuxt:
+    image: node:20-alpine
+    container_name: math-history-nuxt
+    working_dir: /app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: teachers_db
+      DB_USER: admin
+      DB_PASSWORD: admin
+      DB_SSL: "false"
+      NODE_ENV: development
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 3000"
+
+volumes:
+  pg_data:

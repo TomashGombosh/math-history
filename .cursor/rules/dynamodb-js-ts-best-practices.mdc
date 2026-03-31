@@ -1,0 +1,21 @@
+---
+description: DynamoDB design and implementation rules for JavaScript/TypeScript
+globs: "**/*.{js,ts}"
+alwaysApply: false
+---
+
+# DynamoDB + JavaScript/TypeScript Best Practices
+
+- Design tables from access patterns first, not from relational schema habits.
+- Define explicit key naming conventions (`PK`, `SK`, entity prefixes).
+- Create GSIs only for required query patterns; each GSI must have a clear use case.
+- Prefer `Query` by key over `Scan`. Never put scans on hot request paths.
+- Keep items small; store large files/blobs in S3 and keep references in DynamoDB.
+- Use runtime validation (Zod or equivalent) at API boundaries.
+- Use conditional writes for uniqueness and race safety.
+- Implement idempotency for retryable write operations.
+- Always paginate list endpoints (`LastEvaluatedKey`), never assume full read.
+- Handle reserved words and expression syntax safely.
+- Log and monitor consumed capacity in staging for cost tuning.
+- Use TTL only for temporary data (sessions, tokens), not critical records.
+- Keep repository/service layers explicit and typed, with clear input/output contracts.

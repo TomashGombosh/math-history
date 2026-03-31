@@ -1,0 +1,20 @@
+---
+description: AWS free-tier-first and low-cost architecture rules
+alwaysApply: true
+---
+
+# Free-Tier / Low-Cost AWS Rules
+
+- Optimize for lowest safe cost first; scale complexity only when metrics justify it.
+- Use S3 + CloudFront for static content delivery.
+- Prefer managed pay-per-use services for low traffic.
+- Keep Lambda bundles small and dependencies minimal.
+- Reuse SDK clients outside handlers to reduce cold start overhead.
+- Set conservative Lambda memory/timeouts, then tune with real metrics.
+- Cache aggressively at CloudFront for static and media paths.
+- Add cache-control headers intentionally; avoid accidental no-cache defaults.
+- Use least-privilege IAM policies for every function/service.
+- Create budget alarms and cost anomaly alerts from day one.
+- Tag resources by project, environment, and owner for cost visibility.
+- Avoid always-on resources unless strictly required.
+- Treat cost regressions as production issues and fix quickly.

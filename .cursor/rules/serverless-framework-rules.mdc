@@ -1,0 +1,20 @@
+---
+description: Serverless Framework deployment and operational standards
+globs: "**/serverless*.{yml,yaml,js,ts}"
+alwaysApply: false
+---
+
+# Serverless Framework Rules
+
+- Keep `serverless` config deterministic and stage-aware (`dev`, `staging`, `prod`).
+- Centralize shared settings (runtime, region, env, tags, IAM boundaries).
+- Use per-function least-privilege IAM; do not grant wildcard permissions by default.
+- Keep function handlers small and focused on one responsibility.
+- Use explicit timeouts, memory, and retry behavior per function.
+- Configure dead-letter or failure handling for async/event flows.
+- Keep secrets out of source control; load from secure parameter stores.
+- Version APIs safely; avoid breaking contract changes without migration strategy.
+- Add structured logging and correlation IDs for all handlers.
+- Validate deployment artifacts in CI before deploy.
+- Make rollback easy: immutable artifacts, stage isolation, and clear rollback steps.
+- Document every non-obvious infrastructure decision in code comments or docs.

@@ -1,0 +1,23 @@
+---
+description: SEO standards for React SPA deployed on CloudFront
+globs: "**/*.{jsx,tsx,html,js,ts}"
+alwaysApply: false
+---
+
+# SEO Best Practices (React SPA + CloudFront)
+
+- Set a unique `<title>` and meta description for every indexable route.
+- Set canonical URLs for all public pages. Avoid duplicate canonical targets.
+- Keep URLs human-readable and stable (`/teachers`, `/teacher/:slug`, `/graduates/:year`).
+- Keep one clear `h1` per page and a logical heading hierarchy.
+- Preserve structured data (JSON-LD) for:
+  - organization/site,
+  - breadcrumbs,
+  - entity pages.
+- Provide and maintain `sitemap.xml` and `robots.txt`.
+- Ensure CloudFront and SPA routing do not break direct URL access.
+- Do not block important assets with robots rules.
+- Use descriptive `alt` text for meaningful images.
+- Optimize media for performance (modern formats, dimensions, lazy loading where appropriate).
+- Verify Open Graph and Twitter metadata for share previews.
+- Treat SEO metadata as product requirements, not optional polish.

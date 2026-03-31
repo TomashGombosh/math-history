@@ -1,0 +1,28 @@
+---
+description: Enforce SOLID, KISS, and DRY design standards across the codebase
+alwaysApply: true
+---
+
+# SOLID, KISS, DRY Rules
+
+- Prefer simple, readable solutions over clever or compressed code.
+- Write code for maintainers first: clear names, clear flow, clear intent.
+
+## SOLID
+- Single Responsibility: each module/function should have one reason to change.
+- Open/Closed: extend behavior via composition, not fragile in-place rewrites.
+- Liskov Substitution: derived behavior must preserve expected contracts.
+- Interface Segregation: expose small, focused interfaces instead of broad ones.
+- Dependency Inversion: depend on abstractions, not concrete low-level details.
+
+## KISS
+- Choose the smallest solution that fully solves the problem.
+- Avoid speculative abstractions and premature optimization.
+- Reduce branching complexity with guard clauses and explicit invariants.
+
+## DRY
+- Eliminate repeated business logic, validation rules, and mapping code.
+- Extract shared logic only when repetition is real and stable.
+- Keep one source of truth for constants, route paths, and schemas.
+
+- Every refactor must keep behavior stable unless explicitly requested otherwise.
