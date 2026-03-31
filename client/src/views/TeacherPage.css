@@ -1,0 +1,33 @@
+.teacher-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px 24px 24px;
+  background: #fff;
+  border-radius: 10px;
+}
+.header {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+.photo {
+  width: 220px;
+  aspect-ratio: 4 / 5;
+  background: #eee;
+  overflow: hidden;
+}
+.photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.section {
+  margin-bottom: 20px;
+}
+.multiline {
+  white-space: pre-line;
+}
+.back-link {
+  margin-top: 16px;
+  text-align: right;
+}

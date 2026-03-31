@@ -1,7 +1,9 @@
 {
   "name": "math-history-nuxt",
+  "author": "UzNU",
+  "license": "MIT",
   "type": "module",
-  "private": true,
+  "private": false,
   "scripts": {
     "build": "nuxt build",
     "start": "node --env-file=.env .output/server/index.mjs",
@@ -12,18 +14,18 @@
     "thumbs": "node scripts/generate-thumbs.mjs"
   },
   "dependencies": {
-    "dotenv": "^17.2.3",
-    "jsonwebtoken": "^9.0.2",
-    "nuxt": "^4.2.1",
-    "pg": "^8.16.3",
-    "pg-hstore": "^2.3.4",
-    "sequelize": "^6.37.7",
-    "sharp": "^0.34.5",
-    "vue": "^3.5.25",
-    "vue-router": "^4.6.3",
-    "xml2js": "^0.6.2"
+    "dotenv": "17.2.3",
+    "jsonwebtoken": "9.0.2",
+    "nuxt": "4.2.1",
+    "pg": "8.16.3",
+    "pg-hstore": "2.3.4",
+    "sequelize": "6.37.7",
+    "sharp": "0.34.5",
+    "vue": "3.5.25",
+    "vue-router": "4.6.3",
+    "xml2js": "0.6.2"
   },
   "devDependencies": {
-    "sass-embedded": "^1.93.3"
+    "sass-embedded": "1.93.3"
   }
 }

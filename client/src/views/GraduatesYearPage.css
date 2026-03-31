@@ -1,0 +1,26 @@
+.graduates-year-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 16px;
+  background: #fff;
+}
+.years-table {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 8px 0 24px;
+}
+.year-cell {
+  padding: 4px 10px;
+  border: 1px solid #ccc;
+  font-size: 12px;
+  background: #f9f9f9;
+}
+.year-cell.active {
+  background: #19a0a0;
+  color: #fff;
+  font-weight: bold;
+}
+.students-list {
+  margin: 0 0 0 20px;
+}

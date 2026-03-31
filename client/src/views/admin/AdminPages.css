@@ -1,0 +1,13 @@
+.admin-home {
+  max-width: 800px;
+  margin: 20px auto;
+  background: #fff;
+  padding: 16px;
+}
+.admin-menu {
+  margin-top: 10px;
+  padding-left: 18px;
+}
+.logout-btn {
+  margin-top: 16px;
+}
