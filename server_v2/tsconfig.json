@@ -1,0 +1,44 @@
+{
+    "compilerOptions": {
+        "esModuleInterop": true,
+        "preserveConstEnums": true,
+        "strictNullChecks": true,
+        "sourceMap": false,
+        "allowJs": true,
+        "resolveJsonModule": true,
+        "removeComments": true,
+        "module": "commonjs",
+        "target": "es6",
+        "outDir": ".build",
+        "moduleResolution": "node",
+        "typeRoots": [
+            "node_modules/@types/"
+        ],
+        "noEmitOnError": true,
+        "lib": [
+            "es2022",
+            "dom"
+        ],
+        "rootDir": "./src",
+        "baseUrl": "./src",
+        "paths": {
+            "@interfaces/*": [
+                "./interfaces/*"
+            ]
+        }
+    },
+    "include": [
+        "./src/**/*.ts",
+        "./src/**/*.js",
+        "./src/**/*.json"
+    ],
+    "exclude": [
+        "node_modules",
+        ".build",
+        "tsconfig.json",
+        "eslint.config.mjs",
+        ".prettierrc.js",
+        "package.json",
+        "package-lock.json"
+    ]
+}
