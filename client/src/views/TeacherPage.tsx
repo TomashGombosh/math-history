@@ -16,18 +16,11 @@ type Teacher = {
   bio?: string | null;
 };
 
-export default function TeacherPage() {
-  const { slug = "" } = useParams();
+function TeacherProfile({ slug }: { slug: string }) {
   const [teacher, setTeacher] = useState<Teacher | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!slug) {
-      setTeacher(null);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
     void apiGet<TeacherDto>(`/api/teachers/by-slug/${encodeURIComponent(slug)}`)
       .then((t) => {
         setTeacher({
@@ -79,4 +72,14 @@ export default function TeacherPage() {
       </div>
     </div>
   );
+}
+
+export default function TeacherPage() {
+  const { slug = "" } = useParams();
+
+  if (!slug) {
+    return <div className="teacher-page">Викладача не знайдено</div>;
+  }
+
+  return <TeacherProfile key={slug} slug={slug} />;
 }

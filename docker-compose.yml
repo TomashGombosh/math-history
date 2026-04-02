@@ -1,3 +1,4 @@
+# Local stack (full project). For a slimmer test-only stack (CI / npm test), see docker-compose.test.yml.
 # Local stack for server_v2 integration tests (DynamoDB + MinIO):
 #   docker compose up -d dynamodb dynamodb-migrate minio s3-init
 #   server_v2/.env: DYNAMODB_ENDPOINT=http://127.0.0.1:8000 S3_ENDPOINT=http://127.0.0.1:9000
