@@ -10,8 +10,10 @@
 #
 # Repository variable (optional): AWS_REGION (default eu-north-1 in jobs below).
 #
-# Bootstrap once per account: create the state bucket and lock table, and an IAM role
-# trusted by GitHub OIDC with permissions for DynamoDB, Cognito, S3 state, DynamoDB lock.
+# Bootstrap once per account: create the state bucket and lock table, and IAM roles
+# trusted by GitHub OIDC (DynamoDB, Cognito, S3 data bucket, Serverless deploy, etc.).
+#
+# Per-environment secret for S3 uploads bucket stack: AWS_S3_DATA_ROLE_TO_ASSUME
 #
 # Serverless deploy job (same branch → environment as Terraform):
 #   Per-environment secrets: AWS_SERVERLESS_ROLE_TO_ASSUME, AWS_ACCOUNT_ID
@@ -101,10 +103,41 @@ jobs:
           state-key: cognito/${{ steps.target.outputs.tf_env }}.tfstate
           tf-environment: ${{ steps.target.outputs.tf_env }}
 
+  deploy-s3-data:
+    name: Terraform apply (S3 uploads)
+    runs-on: ubuntu-24.04
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'stage' }}
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Resolve target environment
+        id: target
+        run: |
+          if [ "${GITHUB_REF}" = "refs/heads/main" ]; then
+            echo "tf_env=prod" >> "$GITHUB_OUTPUT"
+          else
+            echo "tf_env=stage" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Apply S3 data bucket stack
+        uses: ./.github/actions/terraform-aws-apply
+        with:
+          working-directory: infra/s3-data
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_S3_DATA_ROLE_TO_ASSUME }}
+          expected-aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
+          state-bucket: ${{ vars.TF_STATE_BUCKET }}
+          lock-table: ${{ vars.TF_LOCK_TABLE }}
+          state-key: s3-data/${{ steps.target.outputs.tf_env }}.tfstate
+          tf-environment: ${{ steps.target.outputs.tf_env }}
+
   deploy-server:
     name: Deploy server (Serverless)
     runs-on: ubuntu-24.04
-    needs: [deploy-dynamodb, deploy-cognito]
+    needs: [deploy-dynamodb, deploy-cognito, deploy-s3-data]
     environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'stage' }}
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
