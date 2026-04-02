@@ -97,7 +97,7 @@ jobs:
         run: npm run build
 
   terraform-validate:
-    name: Terraform validate
+    name: Lint (Terraform)
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
