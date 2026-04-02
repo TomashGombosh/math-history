@@ -69,7 +69,6 @@ jobs:
         if: always()
         run: docker compose -f docker-compose.test.yml down -v
 
-
   client-validate:
     name: Lint & Test (Client)
     runs-on: ubuntu-24.04
@@ -96,3 +95,27 @@ jobs:
         env:
           VITE_API_URL: http://localhost:3000
         run: npm run build
+
+  terraform-validate:
+    name: Terraform validate
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.13.2
+
+      - name: Terraform Format check
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+
+      - name: Run TFLint
+        run: |
+          tflint --init
+          tflint --recursive
