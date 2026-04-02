@@ -1,14 +1,16 @@
 import z from 'zod';
 
-export const graduateStudentSchema = z.object({
-	id: z.number().optional(),
-	index: z.number().optional(),
-	name: z.string(),
-	specialty: z.string().optional(),
-	section: z.string().optional(),
-	year: z.number().optional(),
-	honorsDegree: z.boolean().optional(),
-}).passthrough();
+export const graduateStudentSchema = z
+	.object({
+		id: z.number().optional(),
+		index: z.number().optional(),
+		name: z.string(),
+		specialty: z.string().optional(),
+		section: z.string().optional(),
+		year: z.number().optional(),
+		honorsDegree: z.boolean().optional(),
+	})
+	.passthrough();
 
 export const graduateImageSchema = z
 	.object({

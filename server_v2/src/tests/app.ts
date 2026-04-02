@@ -8,7 +8,7 @@ import { TEST_IP } from './consts.js';
 import type { wrap as lambdaWrapFn } from 'lambda-wrapper';
 
 // serverless-jest-plugin attaches the whole `lambda-wrapper` module (object with `.wrap`)
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+// @typescript-eslint/no-require-imports
 const { lambdaWrapper } = require('serverless-jest-plugin') as {
 	lambdaWrapper: { wrap: typeof lambdaWrapFn };
 };
@@ -59,7 +59,7 @@ describe('api', () => {
 		] as const);
 
 	for (const module of tests) {
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		// @typescript-eslint/no-require-imports
 		require(`${moduleFolderPath}/${module}/test.js`)(
 			module.includes('/cron/') ? wrappedCron : module.includes('/queues/') ? wrappedQueues : wrapped,
 			expect,

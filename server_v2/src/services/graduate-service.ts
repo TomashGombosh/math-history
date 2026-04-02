@@ -100,10 +100,7 @@ export async function getGraduateYearDetail(yearNum: number): Promise<{
 					id = nextGeneratedId++;
 				}
 				const honors =
-					st.honorsDegree === true ||
-					st.honorsDegree === 'true' ||
-					st.isBold === true ||
-					st.isBold === 'true';
+					st.honorsDegree === true || st.honorsDegree === 'true' || st.isBold === true || st.isBold === 'true';
 
 				allStudents.push({
 					id: Number(id),
@@ -239,8 +236,7 @@ export async function createGraduate(body: GraduateCreateBody): Promise<{ ok: bo
 		const index = !Number.isNaN(indexVal) && indexVal > 0 ? indexVal : students.length + 1;
 
 		const incomingId = Number(s.id);
-		const id =
-			Number.isInteger(incomingId) && incomingId > maxExistingId ? incomingId : nextId++;
+		const id = Number.isInteger(incomingId) && incomingId > maxExistingId ? incomingId : nextId++;
 
 		students.push({
 			id,
@@ -350,8 +346,7 @@ export async function updateGraduateByYear(
 		const index = !Number.isNaN(indexVal) && indexVal > 0 ? indexVal : students.length + 1;
 
 		const incomingId = Number(s.id);
-		const id =
-			Number.isInteger(incomingId) && incomingId > maxExistingId ? incomingId : nextId++;
+		const id = Number.isInteger(incomingId) && incomingId > maxExistingId ? incomingId : nextId++;
 
 		students.push({
 			id,

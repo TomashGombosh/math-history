@@ -6,7 +6,7 @@ import { updateGraduateByYear } from '@services/graduate-service';
 export const handler = async (ctx: Engine) => {
 	const currentYear = Number(ctx.req.params.year);
 	if (!currentYear || Number.isNaN(currentYear)) {
-		return ResponseWriter.BadRequest({ message: "Некоректний параметр year у URL" });
+		return ResponseWriter.BadRequest({ message: 'Некоректний параметр year у URL' });
 	}
 	try {
 		const res = await updateGraduateByYear(currentYear, ctx.req.body);
@@ -17,7 +17,7 @@ export const handler = async (ctx: Engine) => {
 	} catch (e: unknown) {
 		const msg = e instanceof Error ? e.message : '';
 		if (msg === 'INVALID_YEAR') {
-			return ResponseWriter.BadRequest({ message: "Некоректний рік випуску" });
+			return ResponseWriter.BadRequest({ message: 'Некоректний рік випуску' });
 		}
 		if (msg === 'STUDENTS_REQUIRED' || msg === 'STUDENTS_EMPTY') {
 			return ResponseWriter.BadRequest({ message: 'Потрібно передати хоча б одного студента' });

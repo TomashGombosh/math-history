@@ -11,7 +11,7 @@ export const handler = async (ctx: Engine) => {
 	} catch (e: unknown) {
 		const msg = e instanceof Error ? e.message : '';
 		if (msg === 'CREDENTIALS_REQUIRED') {
-			return ResponseWriter.BadRequest({ message: "Потрібно ввести логін і пароль" });
+			return ResponseWriter.BadRequest({ message: 'Потрібно ввести логін і пароль' });
 		}
 		if (msg === 'BAD_CREDENTIALS') {
 			return ResponseWriter.Unauthorized({ message: 'Невірний логін або пароль' });

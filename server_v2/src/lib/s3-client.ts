@@ -9,8 +9,7 @@ export function getS3Client(): S3Client {
 		const endpoint = process.env.S3_ENDPOINT?.trim();
 		const accessKeyId = process.env.AWS_ACCESS_KEY_ID?.trim();
 		const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY?.trim();
-		const localCreds =
-			accessKeyId && secretAccessKey ? { accessKeyId, secretAccessKey } : undefined;
+		const localCreds = accessKeyId && secretAccessKey ? { accessKeyId, secretAccessKey } : undefined;
 
 		client = new S3Client({
 			region,

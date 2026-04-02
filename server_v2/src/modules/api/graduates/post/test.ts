@@ -1,16 +1,7 @@
-import {
-	TEST_GRADUATE_YEAR_CREATE,
-	TEST_GRADUATE_YEAR_DELETE,
-	TEST_GRADUATE_YEAR_UPDATE,
-} from 'tests/consts';
+import { TEST_GRADUATE_YEAR_CREATE, TEST_GRADUATE_YEAR_DELETE, TEST_GRADUATE_YEAR_UPDATE } from 'tests/consts';
 import { adminToken, bearerJsonHeaders, jsonBody } from '@tests/helpers/http.js';
 
-async function deleteYearQuiet(
-	wrapped: any,
-	requestContext: unknown,
-	token: string,
-	year: number,
-): Promise<void> {
+async function deleteYearQuiet(wrapped: any, requestContext: unknown, token: string, year: number): Promise<void> {
 	await wrapped.run({
 		requestContext,
 		path: `/api/graduates/${year}`,

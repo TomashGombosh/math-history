@@ -9,7 +9,7 @@ export const handler = async (ctx: Engine) => {
 	} catch (e: unknown) {
 		const msg = e instanceof Error ? e.message : '';
 		if (msg === 'INVALID_YEAR') {
-			return ResponseWriter.BadRequest({ message: "Некоректний рік випуску" });
+			return ResponseWriter.BadRequest({ message: 'Некоректний рік випуску' });
 		}
 		if (msg === 'STUDENTS_REQUIRED' || msg === 'STUDENTS_EMPTY') {
 			return ResponseWriter.BadRequest({ message: 'Потрібно передати хоча б одного студента' });

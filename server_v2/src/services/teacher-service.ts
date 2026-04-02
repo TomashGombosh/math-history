@@ -136,7 +136,10 @@ export async function createTeacher(body: TeacherCreateBody): Promise<TeacherPub
 	return toPublic(item);
 }
 
-export async function updateTeacher(id: number, body: TeacherUpdateBody): Promise<{ teacher: TeacherPublic; oldImageUrl: string | null }> {
+export async function updateTeacher(
+	id: number,
+	body: TeacherUpdateBody,
+): Promise<{ teacher: TeacherPublic; oldImageUrl: string | null }> {
 	const existing = await getItem<TeacherItem>({
 		Key: { pk: PK.TEACHER, sk: teacherSortKey(id) },
 	});

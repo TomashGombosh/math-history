@@ -1,10 +1,12 @@
 import z from 'zod';
 
-export const publicationSchema = z.object({
-	title: z.string().optional(),
-	url: z.string().optional(),
-	year: z.union([z.string(), z.number()]).optional(),
-}).passthrough();
+export const publicationSchema = z
+	.object({
+		title: z.string().optional(),
+		url: z.string().optional(),
+		year: z.union([z.string(), z.number()]).optional(),
+	})
+	.passthrough();
 
 export const teacherPublicSchema = z.object({
 	id: z.number(),

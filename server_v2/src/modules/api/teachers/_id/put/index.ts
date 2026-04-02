@@ -10,11 +10,7 @@ export const handler = async (ctx: Engine) => {
 	try {
 		const { teacher, oldImageUrl } = await updateTeacher(id, ctx.req.body);
 		const newImageUrl = teacher.imageUrl || null;
-		if (
-			oldImageUrl &&
-			oldImageUrl !== newImageUrl &&
-			oldImageUrl !== DEFAULT_TEACHER_IMAGE_URL
-		) {
+		if (oldImageUrl && oldImageUrl !== newImageUrl && oldImageUrl !== DEFAULT_TEACHER_IMAGE_URL) {
 			await deleteImageFiles(oldImageUrl);
 		}
 		return ResponseWriter.Success(teacher);
