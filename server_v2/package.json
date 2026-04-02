@@ -11,7 +11,8 @@
     "lint": "eslint . --ext ts --report-unused-disable-directives --max-warnings 0",
     "format": "prettier --write '**/*.js' '**/*.ts' --ignore-path .prettierignore",
     "format:check": "prettier '**/*.js' '**/*.ts' --ignore-path .prettierignore --check",
-    "test": "rm -rf .build && export NODE_ENV=test && npx tsc && npx tsc-alias && npx jest --config jest.config.cjs --runInBand",
+    "test": "rm -rf .build && export NODE_ENV=test APP_SECRETS_ENABLED=false && npx tsc && npx tsc-alias && NODE_OPTIONS='--experimental-vm-modules' npx jest --config jest.config.cjs --runInBand",
+    "test:tree": "node scripts/generate-test-tree.cjs",
     "serve": "npx sls offline start --host 0.0.0.0 --region eu-north-1",
     "dev": "npx concurrently -k -n BUILD,SLS 'npm:build:watch' 'npm:serve'"
   },
@@ -20,8 +21,13 @@
     "root": false
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1022.0",
+    "@aws-sdk/client-s3": "^3.1022.0",
     "@aws-sdk/client-secrets-manager": "3.1006.0",
+    "@aws-sdk/lib-dynamodb": "^3.1022.0",
+    "@aws-sdk/s3-request-presigner": "^3.1022.0",
     "dotenv": "17.2.3",
+    "jsonwebtoken": "^9.0.3",
     "zod": "4.3.6",
     "zod-openapi": "5.4.6"
   },
@@ -30,6 +36,7 @@
     "@serverless/eslint-config": "5.1.0",
     "@types/aws-lambda": "8.10.160",
     "@types/jest": "30.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/lambda-wrapper": "0.3.4",
     "@types/node": "24.10.1",
     "@typescript-eslint/eslint-plugin": "8.54.0",
@@ -45,6 +52,7 @@
     "prettier": "3.8.1",
     "serverless": "4.31.2",
     "serverless-api-gateway-throttling": "2.0.3",
+    "serverless-jest-plugin": "^0.4.0",
     "serverless-offline": "14.5.0",
     "serverless-plugin-resource-tagging": "1.2.0",
     "ts-node": "10.9.2",

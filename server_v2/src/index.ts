@@ -1,125 +1,157 @@
 import type { AnyDict, Engine, IRequest, User } from '@interfaces/types';
 import * as fs from 'fs';
 import type z from 'zod';
-import getConfig from './config/env';
-import * as consts from './config/consts';
-import { ResponseWriter } from './lib/response-writer';
+import type { AppConfig } from '@config/types';
+import getConfig from '@config/env';
+import * as consts from '@config/consts';
+import { assertAuthenticatedRequest, isApiGatewayAdminAuthorizer } from '@lib/admin-auth';
+import { ResponseWriter } from '@lib/response-writer';
+import { normalizeApiSegments, resolveModulePath } from '@lib/route-resolve';
 
-const modules = {}; // Modules cache
-const schemas: { [path: string]: { schema: z.ZodType } } = {}; // Schemas cache
+const modules: Record<string, { handler?: (ctx: Engine) => Promise<unknown>; publicResource?: boolean }> = {};
+const schemas: { [path: string]: { schema: z.ZodType } } = {};
 const cleanDirname = __dirname.replace('.build', 'src');
 
-let config: any = null;
-export const handler = async (event: any, context: any) => {
-	if ((event.httpMethod || event.method) === 'OPTIONS') {
+function getHeader(headers: Record<string, string | undefined> | undefined, name: string): string | undefined {
+	if (!headers) return undefined;
+	const lower = name.toLowerCase();
+	for (const [k, v] of Object.entries(headers)) {
+		if (k.toLowerCase() === lower) {
+			return v;
+		}
+	}
+	return undefined;
+}
+
+let appConfig: AppConfig | null = null;
+
+export const handler = async (event: any) => {
+	const rawMethod = String(event.requestContext?.http?.method ?? event.httpMethod ?? event.method ?? 'GET');
+	if (rawMethod === 'OPTIONS') {
 		return ResponseWriter.Success('');
 	}
+	const method = rawMethod as IRequest['method'];
+
+	const rawPath = (event.rawPath ?? event.path ?? '') as string;
+	const pathOnly = rawPath.split('?')[0].split('#')[0];
+	const pathSegments = pathOnly.split('/').filter(Boolean);
+
+	const headers = Object.fromEntries(
+		Object.entries(event.headers || {}).filter(([, v]) => v !== undefined),
+	) as IRequest['headers'];
 
 	const req: IRequest = {
-		method: event.httpMethod || event.method,
-		params: event.queryStringParameters || {},
-		headers: event.headers,
-		ip: event.requestContext.http?.sourceIp || event.requestContext.identity.sourceIp,
+		method,
+		params: (event.queryStringParameters || {}) as Record<string, string>,
+		headers,
+		ip: event.requestContext?.http?.sourceIp ?? event.requestContext?.identity?.sourceIp ?? '',
 		body: event.body || {},
-		cookies:
-			event.headers?.cookie || event.headers?.Cookie
-				? Object.fromEntries(
-						(event.headers.cookie || event.headers.Cookie)
-							.split('; ')
-							.map((c: string) => [c.split('=')[0], c.split('=').slice(1).join('=')]),
-					)
-				: {},
+		cookies: getHeader(headers, 'cookie')
+			? Object.fromEntries(
+					getHeader(headers, 'cookie')!
+						.split('; ')
+						.map((c: string) => [c.split('=')[0], c.split('=').slice(1).join('=')]),
+				)
+			: {},
 	};
-	config = config || (await getConfig());
 
-	const ctx: Engine = {
-		req,
-		consts,
-		config,
-		user: {} as User,
-	};
+	const contentType = getHeader(headers, 'content-type') || '';
 
 	if (typeof event.body === 'string' && event.body.length) {
-		if (event.body.startsWith('{') | event.body.startsWith('[')) {
-			req.body = JSON.parse(event.body);
-		} else if (
-			[event.headers['Content-Type'], event.headers['content-type']].includes('application/x-www-form-urlencoded')
-		) {
+		if (event.body.startsWith('{') || event.body.startsWith('[')) {
+			try {
+				req.body = JSON.parse(event.body);
+			} catch {
+				req.body = {};
+			}
+		} else if (contentType.includes('application/x-www-form-urlencoded')) {
 			req.body = Object.fromEntries(new URLSearchParams(event.body));
 		}
 	}
 
-	const pathParts: string[] = event.path.split('/').filter(Boolean);
+	const normalizedSegments = normalizeApiSegments(pathSegments);
+	const resolved = resolveModulePath(normalizedSegments, method);
 
-	if (!pathParts.length) {
+	if (!resolved) {
 		return ResponseWriter.BadRequest({ message: 'Invalid path' });
 	}
 
-	const [_path, query] = pathParts.join('/').split(/\?|#/);
+	const { modulePath, pathParams } = resolved;
+	req.params = { ...req.params, ...pathParams };
 
-	const path =
-		_path
-			.split('/')
-			.filter((v: string) => v && !v.includes('.'))
-			.join('/') + `/${req.method.toLowerCase()}`;
-
-	if (query) {
-		req.params = { ...req.params, ...Object.fromEntries(new URLSearchParams(query)) };
+	const queryString = rawPath.includes('?') ? rawPath.split('?')[1] : '';
+	if (queryString) {
+		req.params = { ...req.params, ...Object.fromEntries(new URLSearchParams(queryString)) };
 	}
+
+	appConfig = appConfig || (await getConfig());
+
+	const ctx: Engine = {
+		req,
+		consts,
+		config: appConfig,
+		user: {} as User,
+		lambdaEvent: event,
+	};
 
 	if (consts.isProduction) {
 		console.info('>> Request', {
-			path: event.path,
-			moduleLoaded: !!modules[path],
+			path: rawPath,
+			modulePath,
+			moduleLoaded: Boolean(modules[modulePath]),
 			request: req,
 		});
 	} else {
 		console.info('>> Event', event);
 	}
 
-	if (!modules[path]) {
-		const module = `./modules/${path}`;
+	if (!modules[modulePath]) {
+		const moduleFsPath = `./modules/${modulePath}`;
 
-		if (!fs.existsSync(`${__dirname}/${module}/index.js`)) {
-			console.warn(`>> Not found: ${cleanDirname}/${module}/index.ts`);
+		if (!fs.existsSync(`${__dirname}/${moduleFsPath}/index.js`)) {
+			console.warn(`>> Not found: ${cleanDirname}/${moduleFsPath}/index.ts`);
 			return ResponseWriter.NotFound();
 		}
 
-		if (fs.existsSync(`${__dirname}/${module}/schema.js`)) {
-			schemas[path] = await import(`${module}/schema.js`);
+		if (fs.existsSync(`${__dirname}/${moduleFsPath}/schema.js`)) {
+			schemas[modulePath] = await import(`${moduleFsPath}/schema.js`);
 		} else {
-			console.warn(`>> Not found: ${cleanDirname}/${module}/schema.ts`);
+			console.warn(`>> Not found: ${cleanDirname}/${moduleFsPath}/schema.ts`);
 			return ResponseWriter.NotFound();
 		}
 
-		modules[path] = await import(module);
+		modules[modulePath] = await import(moduleFsPath);
 	}
 
-	if (typeof modules[path]?.handler !== 'function') {
-		console.warn(`>> Not found: ${cleanDirname}/${path}/index.ts`);
+	const mod = modules[modulePath];
+	if (typeof mod?.handler !== 'function') {
+		console.warn(`>> Not found: ${cleanDirname}/${modulePath}/index.ts`);
 		return ResponseWriter.NotFound();
 	}
 
 	if (['GET', 'DELETE'].includes(req.method)) {
-		const getParseResult = schemas[path].schema.safeParse(req.params);
+		const getParseResult = schemas[modulePath].schema.safeParse(req.params);
 		if (!getParseResult.success) {
 			return ResponseWriter.BadRequest({ message: 'Invalid input', errors: getParseResult.error.message });
 		}
 		req.params = getParseResult.data as AnyDict;
 	} else if (['POST', 'PUT'].includes(req.method)) {
-		const postParseResult = schemas[path].schema.safeParse(req.body);
+		const postParseResult = schemas[modulePath].schema.safeParse(req.body);
 		if (!postParseResult.success) {
 			return ResponseWriter.BadRequest({ message: 'Invalid input', errors: postParseResult.error.message });
 		}
 		req.body = postParseResult.data as AnyDict;
 	}
 
-	// Authenticate all the requests except the public ones
-	if (!modules[path].publicResource) {
-		if (!(req.headers?.Authorization || req.cookies?.token)) {
+	if (!mod.publicResource) {
+		try {
+			if (!isApiGatewayAdminAuthorizer(event)) {
+				assertAuthenticatedRequest(req, event, appConfig);
+			}
+		} catch {
 			return ResponseWriter.Unauthorized({ message: 'Unauthorized' });
 		}
 	}
 
-	return modules[path].handler(ctx);
+	return mod.handler(ctx);
 };

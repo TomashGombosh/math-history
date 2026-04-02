@@ -1,5 +1,13 @@
 import { faker } from '@faker-js/faker';
 
+// Isolated cohort years for integration tests (graduates module tests).
+export const TEST_GRADUATE_YEAR_CREATE = 2094;
+export const TEST_GRADUATE_YEAR_UPDATE = 2095;
+export const TEST_GRADUATE_YEAR_DELETE = 2096;
+
+/** Year with no cohorts — public GET detail smoke test. */
+export const TEST_GRADUATE_YEAR_EMPTY = 1888;
+
 export const TEST_FIRST_NAME = `Test ${faker.person.firstName()}`;
 
 export const TEST_LAST_NAME = faker.person.lastName();

@@ -1,5 +1,5 @@
-import type { AppConfig } from '../config/types';
-import type * as consts from '../config/consts';
+import type { AppConfig } from '@config/types';
+import type * as consts from '@config/consts';
 
 export interface StringDict {
 	[key: string]: string;
@@ -24,7 +24,7 @@ export type Args = any[];
 
 export interface IRequest {
 	ip: string;
-	method: 'DELETE' | 'GET' | 'POST' | 'PUT';
+	method: 'DELETE' | 'GET' | 'POST' | 'PUT' | 'OPTIONS';
 	headers: StringDict;
 	params: AnyDict;
 	body: any;
@@ -40,6 +40,7 @@ export interface Engine {
 	consts: typeof consts;
 	config: AppConfig;
 	user: User;
+	lambdaEvent: unknown;
 }
 
 export interface User {
