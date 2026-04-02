@@ -1,31 +1,76 @@
 import { z } from 'zod';
 import type { AppConfig, NodeEnv } from './types';
-
-// Load local .env (safe for local/dev usage)
 import dotenv from 'dotenv';
 
-// Initialize dotenv once at module load
 dotenv.config();
 
-// Zod schema for env validation and defaults
-export const envSchema = z.object({
-	NODE_ENV: z.enum(['dev', 'stage', 'prod', 'test', 'local', 'development', 'production'] as const).default('dev'),
-});
+/** Empty / whitespace-only env → undefined (unset). */
+function optionalTrimmed(message = 'Cannot be empty when set') {
+	return z.preprocess((val: unknown) => {
+		if (val === undefined || val === null) return undefined;
+		const s = String(val).trim();
+		return s === '' ? undefined : s;
+	}, z.string().min(1, message).optional());
+}
 
-// Input shape for process.env before parsing
+const NODE_ENV_VALUES = [
+	'local',
+	'dev',
+	'development',
+	'stage',
+	'production',
+	'prod',
+	'test',
+] as const satisfies readonly NodeEnv[];
+
+const relaxedAwsResourceEnvs = new Set<string>(['test', 'local', 'dev', 'development']);
+
+export const envSchema = z
+	.object({
+		NODE_ENV: z.enum(NODE_ENV_VALUES).default('dev'),
+		AWS_REGION: optionalTrimmed(),
+		AWS_DEFAULT_REGION: optionalTrimmed(),
+		AWS_SDK_LOG_LEVEL: optionalTrimmed(),
+		AWS_ACCESS_KEY_ID: optionalTrimmed(),
+		AWS_SECRET_ACCESS_KEY: optionalTrimmed(),
+		DYNAMODB_TABLE_NAME: optionalTrimmed(),
+		DYNAMODB_ENDPOINT: optionalTrimmed(),
+		S3_DATA_BUCKET: optionalTrimmed(),
+		S3_ENDPOINT: optionalTrimmed(),
+		CORS_ORIGIN: optionalTrimmed(),
+	})
+	.superRefine((data, ctx) => {
+		const usesLocalDynamo = Boolean(data.DYNAMODB_ENDPOINT);
+		const skipAwsDataChecks = relaxedAwsResourceEnvs.has(data.NODE_ENV) || usesLocalDynamo;
+		if (skipAwsDataChecks) return;
+		if (!data.DYNAMODB_TABLE_NAME) {
+			ctx.addIssue({
+				code: 'custom',
+				message: 'DYNAMODB_TABLE_NAME is required when not using DYNAMODB_ENDPOINT (e.g. Lambda / AWS DynamoDB).',
+				path: ['DYNAMODB_TABLE_NAME'],
+			});
+		}
+		if (!data.S3_DATA_BUCKET) {
+			ctx.addIssue({
+				code: 'custom',
+				message: 'S3_DATA_BUCKET is required for presigned uploads and image cleanup in this environment.',
+				path: ['S3_DATA_BUCKET'],
+			});
+		}
+	});
+
 export type EnvInput = z.input<typeof envSchema>;
+export type Env = z.infer<typeof envSchema>;
 
-// Cache parsed config for reuse in a single runtime
 let cachedConfig: AppConfig | null = null;
 
-// Build and validate config from process.env
 export const getConfig = async (): Promise<AppConfig> => {
 	if (cachedConfig) return cachedConfig;
 
 	const env = envSchema.parse(process.env);
 
 	cachedConfig = {
-		nodeEnv: env.NODE_ENV as NodeEnv,
+		nodeEnv: env.NODE_ENV,
 	};
 
 	return cachedConfig;

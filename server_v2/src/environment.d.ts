@@ -1,13 +1,10 @@
-// Pull env input shape from Zod schema
-import type { EnvInput } from '@config/env';
+import type { Env } from '@config/env';
 
-// Keys from the schema become allowed process.env keys
-type EnvKeys = keyof EnvInput;
+type EnvKeys = keyof Env;
 
-// Extend NodeJS.ProcessEnv with Zod-based keys
 declare global {
 	namespace NodeJS {
-		interface ProcessEnv extends Record<EnvKeys, string> {}
+		interface ProcessEnv extends Partial<Record<EnvKeys, string | undefined>> {}
 	}
 }
 
