@@ -1,5 +1,5 @@
 import { GetSecretValueCommand, SecretsManagerClient } from '@aws-sdk/client-secrets-manager';
-import { awsSdkLogger } from '../lib/aws-sdk-logger';
+import { awsSdkLogger } from '@lib/aws-sdk-logger';
 
 /**
  * Stages where secrets are allowed to be loaded
