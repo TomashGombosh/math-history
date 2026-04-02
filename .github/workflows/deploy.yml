@@ -1,0 +1,93 @@
+# Deploys infra stacks after merge. Branch → GitHub Environment:
+#   development → environment "stage" (stage AWS)
+#   main        → environment "production" (prod AWS)
+#
+# Per-environment secrets (stage / production):
+#   AWS_ROLE_TO_ASSUME     — IAM role ARN for GitHub OIDC
+#   AWS_ACCOUNT_ID         — expected account (validated before apply)
+#   TF_STATE_BUCKET        — S3 bucket for Terraform state
+#   TF_LOCK_TABLE          — DynamoDB table name for state locking
+#
+# Repository variable (optional): AWS_REGION (default eu-north-1 in jobs below).
+#
+# Bootstrap once per account: create the state bucket and lock table, and an IAM role
+# trusted by GitHub OIDC with permissions for DynamoDB, Cognito, S3 state, DynamoDB lock.
+
+name: Deploy infrastructure
+
+on:
+  push:
+    branches:
+      - development
+      - main
+
+concurrency:
+  group: deploy-infra-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy-dynamodb:
+    name: Terraform apply (DynamoDB)
+    runs-on: ubuntu-24.04
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'stage' }}
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Resolve target environment
+        id: target
+        run: |
+          if [ "${GITHUB_REF}" = "refs/heads/main" ]; then
+            echo "tf_env=prod" >> "$GITHUB_OUTPUT"
+          else
+            echo "tf_env=stage" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Apply DynamoDB stack
+        uses: ./.github/actions/terraform-aws-apply
+        with:
+          working-directory: infra/dynamodb
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_DYNAMODB_ROLE_TO_ASSUME }}
+          expected-aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
+          state-bucket: ${{ secrets.TF_STATE_BUCKET }}
+          lock-table: ${{ secrets.TF_LOCK_TABLE }}
+          state-key: dynamodb/${{ steps.target.outputs.tf_env }}.tfstate
+          tf-environment: ${{ steps.target.outputs.tf_env }}
+
+  deploy-cognito:
+    name: Terraform apply (Cognito)
+    runs-on: ubuntu-24.04
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'stage' }}
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Resolve target environment
+        id: target
+        run: |
+          if [ "${GITHUB_REF}" = "refs/heads/main" ]; then
+            echo "tf_env=prod" >> "$GITHUB_OUTPUT"
+          else
+            echo "tf_env=stage" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Apply Cognito stack
+        uses: ./.github/actions/terraform-aws-apply
+        with:
+          working-directory: infra/cognito
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_COGNITO_ROLE_TO_ASSUME }}
+          expected-aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
+          state-bucket: ${{ secrets.TF_STATE_BUCKET }}
+          lock-table: ${{ secrets.TF_LOCK_TABLE }}
+          state-key: cognito/${{ steps.target.outputs.tf_env }}.tfstate
+          tf-environment: ${{ steps.target.outputs.tf_env }}

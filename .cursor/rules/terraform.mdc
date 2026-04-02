@@ -1,0 +1,313 @@
+---
+description: Terraform rules and best practices
+globs: *.tf
+alwaysApply: false
+---
+# Terraform Best Practices & Rules
+
+## Core Principles
+
+### DRY (Don't Repeat Yourself)
+- Use modules for reusable infrastructure components
+- Centralize common variables in `variables.tf` files
+- Create shared data sources for common lookups
+- Use locals for computed values that are referenced multiple times
+
+### KISS (Keep It Simple, Stupid)
+- Prefer simple, readable configurations over complex abstractions
+- Use descriptive names for resources and variables
+- Avoid deeply nested module structures
+- Keep individual resource configurations focused and minimal
+
+### SOLID Principles
+- **Single Responsibility**: Each module should have one clear purpose
+- **Open/Closed**: Design modules to be extensible without modification
+- **Liskov Substitution**: Module interfaces should be consistent and interchangeable
+- **Interface Segregation**: Keep module interfaces focused and minimal
+- **Dependency Inversion**: Modules should depend on abstractions, not concrete implementations
+
+## File Structure & Organization
+
+```
+project/
+├── main.tf                 # Main configuration
+├── variables.tf            # Input variables
+├── outputs.tf              # Output values
+├── locals.tf               # Local values
+├── data.tf                 # Data sources
+├── providers.tf            # Provider configuration
+├── versions.tf             # Version constraints
+├── backend.tf              # Backend configuration
+├── modules/                # Reusable modules
+│   ├── module-name/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   ├── outputs.tf
+│   │   └── README.md
+└── environments/           # Environment-specific configs
+    ├── dev/
+    ├── staging/
+    └── prod/
+```
+
+## Naming Conventions
+
+### Resources
+- Use lowercase with hyphens: `aws_instance.web_server`
+- Include environment prefix: `prod-web-server`, `dev-database`
+- Use descriptive names: `aws_lb.application_load_balancer`
+
+### Variables
+- Use snake_case: `instance_type`, `vpc_cidr_block`
+- Be descriptive: `database_password` not `db_pwd`
+
+### Modules
+- Use descriptive names: `aws-vpc`, `azure-storage-account`
+- Include cloud provider prefix for clarity
+
+## Module Design
+
+### Module Structure
+```hcl
+# modules/aws-vpc/main.tf
+module "vpc" {
+  source = "./modules/aws-vpc"
+  
+  vpc_cidr = var.vpc_cidr
+  environment = var.environment
+  tags = local.common_tags
+}
+```
+
+### Module Interface
+- Keep variables focused and minimal
+- Use validation blocks for input validation
+- Provide sensible defaults where possible
+- Document all variables and outputs
+
+## Cross-Cloud Best Practices
+
+### Provider Abstraction
+```hcl
+# Use consistent naming across clouds
+locals {
+  cloud_provider = "aws" # or "azure", "gcp"
+  
+  common_tags = {
+    Environment = var.environment
+    Project     = var.project_name
+    ManagedBy   = "terraform"
+    Cloud       = local.cloud_provider
+  }
+}
+```
+
+### Resource Mapping
+```hcl
+# Abstract cloud-specific resources
+locals {
+  compute_instance = {
+    aws = aws_instance.instance
+    azure = azurerm_virtual_machine.instance
+    gcp = google_compute_instance.instance
+  }
+}
+```
+
+### State Management
+- Use consistent backend configurations across environments
+- Implement state locking (DynamoDB for AWS, Azure Storage for Azure)
+- Use workspaces or separate state files for environments
+
+## Security Best Practices
+
+### Secrets Management
+- Never hardcode secrets in Terraform files
+- Use environment variables, AWS Secrets Manager, or Azure Key Vault
+- Implement least privilege access for Terraform execution
+
+### Network Security
+- Use private subnets for sensitive resources
+- Implement security groups/NSGs with minimal required access
+- Enable VPC Flow Logs and monitoring
+
+### IAM & Access Control
+- Use IAM roles with minimal required permissions
+- Implement cross-account access patterns consistently
+- Use service principals and managed identities
+
+## Performance & Scalability
+
+### Resource Optimization
+- Use data sources instead of hardcoded values
+- Implement proper resource dependencies
+- Use count or for_each for similar resources
+
+### State Management
+- Keep state files small and focused
+- Use remote state storage with proper access controls
+- Implement state file versioning and backup
+
+## Testing & Validation
+
+### Pre-commit Hooks
+- Use `terraform fmt` for consistent formatting
+- Run `terraform validate` before commits
+- Implement `tflint` for additional validation
+
+### Testing Strategies
+- Use `terraform plan` for validation
+- Implement integration tests with Terratest
+- Use checkov or tfsec for security scanning
+
+## Environment Management
+
+### Environment Separation
+```hcl
+# Use workspaces or separate configurations
+terraform workspace new dev
+terraform workspace new staging
+terraform workspace new prod
+```
+
+### Configuration Management
+- Use environment-specific variable files
+- Implement consistent tagging across environments
+- Use separate state files for production environments
+
+## Monitoring & Observability
+
+### Logging
+- Enable detailed logging for troubleshooting
+- Implement structured logging with consistent formats
+- Use cloud-native logging services
+
+### Metrics
+- Tag resources for cost tracking and monitoring
+- Implement resource monitoring and alerting
+- Use Terraform Cloud or similar for team collaboration
+
+## Disaster Recovery
+
+### Backup Strategies
+- Regular state file backups
+- Document recovery procedures
+- Test recovery processes regularly
+
+### Multi-Region Deployment
+- Use consistent configurations across regions
+- Implement cross-region resource dependencies
+- Use global services where appropriate
+
+## Compliance & Governance
+
+### Policy Enforcement
+- Use Open Policy Agent (OPA) for policy validation
+- Implement cost controls and budget alerts
+- Regular compliance audits and reporting
+
+### Documentation
+- Maintain comprehensive README files
+- Document architecture decisions
+- Keep runbooks for common operations
+
+## Migration & Updates
+
+### Version Management
+- Pin Terraform and provider versions
+- Use semantic versioning for modules
+- Plan and test major version upgrades
+
+### State Migration
+- Document state migration procedures
+- Test migrations in non-production environments
+- Maintain rollback procedures
+
+## Team Collaboration
+
+### Code Review
+- Require code reviews for infrastructure changes
+- Use pull request templates for consistency
+- Implement automated testing and validation
+
+### Knowledge Sharing
+- Regular team training sessions
+- Document common patterns and solutions
+- Share lessons learned from incidents
+
+## Cost Optimization
+
+### Resource Sizing
+- Right-size resources based on actual usage
+- Use auto-scaling where appropriate
+- Implement cost monitoring and alerts
+
+### Reserved Instances
+- Plan for long-term resource commitments
+- Use spot instances for non-critical workloads
+- Implement cost allocation tags
+
+## Continuous Integration/Continuous Deployment
+
+### Pipeline Integration
+- Integrate Terraform into CI/CD pipelines
+- Use Terraform Cloud or similar for team collaboration
+- Implement automated testing and validation
+
+### Deployment Strategies
+- Use blue-green deployments where possible
+- Implement canary deployments for critical changes
+- Maintain deployment rollback capabilities
+
+## Monitoring & Maintenance
+
+### Regular Maintenance
+- Regular dependency updates
+- Security patch management
+- Performance optimization reviews
+
+### Health Checks
+- Implement resource health monitoring
+- Regular backup verification
+- Performance benchmarking
+
+## Troubleshooting
+
+### Common Issues
+- State file corruption
+- Provider version conflicts
+- Resource dependency issues
+- Network connectivity problems
+
+### Debugging Tools
+- Use `terraform console` for testing expressions
+- Enable detailed logging with `TF_LOG`
+- Use `terraform graph` for dependency visualization
+
+## Best Practices Summary
+
+1. **Start Simple**: Begin with basic configurations and iterate
+2. **Use Modules**: Create reusable, tested modules
+3. **Version Control**: Use semantic versioning and proper branching
+4. **Test Everything**: Validate configurations before deployment
+5. **Document**: Keep comprehensive documentation updated
+6. **Security First**: Implement security best practices from the start
+7. **Monitor**: Implement proper monitoring and alerting
+8. **Backup**: Regular backups and disaster recovery planning
+9. **Collaborate**: Work as a team with proper processes
+10. **Optimize**: Continuously improve and optimize configurations
+
+## Tools & Resources
+
+### Essential Tools
+- Terraform CLI
+- Terraform Cloud/Enterprise
+- TFLint for linting
+- Checkov for security scanning
+- Terratest for testing
+
+### Learning Resources
+- Official Terraform documentation
+- HashiCorp Learn platform
+- Community forums and discussions
+- Regular training and certification updates

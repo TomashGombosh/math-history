@@ -1,0 +1,240 @@
+---
+globs: .github/**
+alwaysApply: false
+---
+# GitHub Actions Best Practices
+
+## Core Principles: SOLID, KISS, DRY
+
+### SOLID Principles Applied to GitHub Actions
+
+#### Single Responsibility Principle (SRP)
+- **One job = one purpose**: Each job should have a single, well-defined responsibility
+- **One step = one action**: Steps should perform a single, atomic operation
+- **Separate concerns**: Split deployment, testing, building, and notification into separate jobs
+- **Example**: Don't mix infrastructure setup with application deployment in the same job
+
+#### Open/Closed Principle (OCP)
+- **Reusable composite actions**: Create composite actions for common patterns (e.g., `setup-terraform`, `configure-aws`)
+- **Parameterize workflows**: Use inputs, secrets, and variables to make workflows configurable without modification
+- **Extend via composition**: Build complex workflows by composing smaller, reusable actions
+
+#### Liskov Substitution Principle (LSP)
+- **Consistent action interfaces**: When creating custom actions, maintain consistent input/output patterns
+- **Standardized step patterns**: Use consistent naming and structure across similar steps
+- **Predictable behavior**: Actions should behave predictably when substituted
+
+#### Interface Segregation Principle (ISP)
+- **Minimal required permissions**: Request only the minimum permissions needed per job
+- **Focused action inputs**: Actions should not require unnecessary inputs
+- **Granular secrets**: Use specific secrets rather than broad access tokens when possible
+
+#### Dependency Inversion Principle (DIP)
+- **Depend on abstractions**: Use environment variables and inputs rather than hardcoded values
+- **Externalize configuration**: Store configuration in GitHub variables/secrets, not in workflow files
+- **Use dependency injection**: Pass dependencies (tokens, credentials) as inputs rather than hardcoding
+
+### KISS (Keep It Simple, Stupid)
+
+#### Workflow Structure
+- **Flat job structure**: Prefer sequential jobs over deeply nested conditionals
+- **Clear naming**: Use descriptive, unambiguous names for jobs, steps, and actions
+- **Minimal conditionals**: Avoid complex if/else logic; use separate workflows or jobs instead
+- **Explicit over implicit**: Make all dependencies and requirements explicit
+
+#### Step Design
+- **One command per step**: Break complex operations into multiple steps for clarity
+- **Inline scripts for simple tasks**: Use inline shell scripts for simple operations (< 5 lines)
+- **External scripts for complex logic**: Move complex logic (> 5 lines) to separate script files
+- **Clear error messages**: Provide actionable error messages that explain what went wrong
+
+#### Configuration
+- **Use defaults**: Provide sensible defaults for workflow inputs
+- **Validate early**: Check prerequisites and inputs at the start of workflows
+- **Fail fast**: Exit immediately when conditions aren't met
+
+### DRY (Don't Repeat Yourself)
+
+#### Reusable Components
+- **Composite actions**: Create composite actions for repeated step sequences
+- **Reusable workflows**: Extract common workflow patterns into reusable workflows (`.github/workflows/reusable/`)
+- **Shared scripts**: Place common scripts in `scripts/` directory and reference them
+- **Action versioning**: Pin action versions consistently across workflows
+
+#### Configuration Management
+- **Centralized variables**: Use repository/organization variables for common values
+- **Environment-specific configs**: Use GitHub Environments for environment-specific variables
+- **Template workflows**: Create workflow templates for similar workflows
+- **Consistent naming**: Use consistent naming conventions across all workflows
+
+#### Code Organization
+- **Shared step definitions**: Extract repeated step patterns into composite actions
+- **Common job patterns**: Create reusable job definitions using matrix strategies
+- **Standardized setup steps**: Use consistent setup steps (checkout, auth, etc.) across workflows
+
+## Implementation Guidelines
+
+### Workflow Structure Template
+
+```yaml
+name: Descriptive Workflow Name
+
+on:
+  # Trigger definition
+
+permissions:
+  # Minimal required permissions
+
+env:
+  # Global environment variables
+
+jobs:
+  job-name:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup dependencies
+        # Setup steps
+      
+      - name: Main action
+        # Primary workflow logic
+      
+      - name: Cleanup
+        if: always()
+        # Cleanup steps
+```
+
+### Best Practices Checklist
+
+#### Before Creating a Workflow
+- [ ] Check if similar workflow/action already exists
+- [ ] Identify reusable components that can be extracted
+- [ ] Determine minimal required permissions
+- [ ] Plan for error handling and cleanup
+
+#### Workflow Design
+- [ ] One job per responsibility
+- [ ] Use descriptive names (job, step, variable names)
+- [ ] Pin all action versions (avoid @main or @master)
+- [ ] Use environment variables for configuration
+- [ ] Request minimal permissions per job
+- [ ] Add proper error handling and cleanup steps
+
+#### Code Organization
+- [ ] Extract repeated steps into composite actions
+- [ ] Move complex logic to external scripts
+- [ ] Use reusable workflows for common patterns
+- [ ] Centralize configuration in variables/secrets
+- [ ] Document workflow inputs and outputs
+
+#### Security
+- [ ] Use OIDC for cloud provider authentication (preferred over static credentials)
+- [ ] Store secrets in GitHub Secrets, never in workflow files
+- [ ] Use environment-specific secrets when possible
+- [ ] Limit token permissions to minimum required
+- [ ] Review and audit permissions regularly
+
+#### Maintainability
+- [ ] Add comments for complex logic
+- [ ] Use consistent formatting (consider yaml-lint)
+- [ ] Version control all scripts and actions
+- [ ] Test workflows in non-production environments first
+- [ ] Document workflow dependencies and requirements
+
+### Anti-Patterns to Avoid
+
+#### ❌ Don't Do This
+- Hardcode values in workflows
+- Mix multiple concerns in one job
+- Use @main or @master for actions
+- Request broad permissions unnecessarily
+- Duplicate step sequences across workflows
+- Ignore error handling
+- Use inline scripts for complex logic (> 10 lines)
+
+#### ✅ Do This Instead
+- Use variables and secrets
+- Separate concerns into different jobs
+- Pin specific action versions
+- Request minimal required permissions
+- Extract common patterns into composite actions
+- Add proper error handling and cleanup
+- Move complex logic to external scripts
+
+### Common Patterns
+
+#### Pattern: Reusable Terraform Workflow
+```yaml
+# .github/workflows/reusable/terraform-deploy.yml
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+      working_directory:
+        required: true
+
+jobs:
+  terraform-deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-terraform
+      - uses: ./.github/actions/configure-aws
+        with:
+          environment: ${{ inputs.environment }}
+      - name: Terraform Apply
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          terraform init
+          terraform plan
+          terraform apply -auto-approve
+```
+
+#### Pattern: Composite Action for Common Setup
+```yaml
+# .github/actions/setup-terraform/action.yml
+name: 'Setup Terraform'
+description: 'Setup Terraform with backend configuration'
+inputs:
+  working_directory:
+    required: true
+  backend_config:
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+    - name: Configure Backend
+      shell: bash
+      run: |
+        cat <<EOF > ${{ inputs.working_directory }}/backend.hcl
+        ${{ inputs.backend_config }}
+        EOF
+```
+
+### Validation Rules
+
+When reviewing or creating GitHub Actions workflows, ensure:
+1. **SRP**: Each job has a single, clear purpose
+2. **OCP**: Workflows are extensible via inputs without modification
+3. **LSP**: Actions behave consistently when used in different contexts
+4. **ISP**: Minimal permissions requested per job
+5. **DIP**: Configuration externalized, not hardcoded
+6. **KISS**: Simple, clear structure without unnecessary complexity
+7. **DRY**: No repeated code; use reusable components
+
+### Quick Reference
+
+- **Composite Actions**: `.github/actions/<name>/action.yml` - Reusable step sequences
+- **Reusable Workflows**: `.github/workflows/reusable/<name>.yml` - Reusable workflow patterns
+- **Scripts**: `scripts/<name>.sh` - Complex logic and operations
+- **Variables**: Repository/Organization variables for common config
+- **Secrets**: GitHub Secrets for sensitive data
+- **Environments**: GitHub Environments for environment-specific config
