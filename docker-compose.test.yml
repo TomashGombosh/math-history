@@ -1,0 +1,98 @@
+# Stack for server_v2 integration tests and CI (DynamoDB Local + MinIO).
+#
+# Usage (repo root):
+#   docker compose -f docker-compose.test.yml up -d dynamodb minio
+#   docker compose -f docker-compose.test.yml run --rm dynamodb-migrate
+#   docker compose -f docker-compose.test.yml run --rm s3-init
+#   cd server_v2 && npm test
+#   docker compose -f docker-compose.test.yml down -v
+#
+# Env for tests (host): DYNAMODB_ENDPOINT=http://127.0.0.1:8000 S3_ENDPOINT=http://127.0.0.1:9000
+#   AWS_ACCESS_KEY_ID=local AWS_SECRET_ACCESS_KEY=locallocal S3_DATA_BUCKET=math-history-server-data-local
+
+name: math-history-test
+
+services:
+  dynamodb:
+    image: amazon/dynamodb-local:latest
+    ports:
+      - "8000:8000"
+    command: ["-jar", "DynamoDBLocal.jar", "-sharedDb", "-dbPath", "/data"]
+    volumes:
+      - ddb_data:/data
+
+  dynamodb-migrate:
+    image: amazon/aws-cli:latest
+    depends_on:
+      - dynamodb
+    environment:
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: local
+      AWS_DEFAULT_REGION: eu-north-1
+      AWS_EC2_METADATA_DISABLED: "true"
+    volumes:
+      - ./server_v2/migration/table.json:/migration/table.json:ro
+    restart: "no"
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        set -e
+        ENDPOINT=http://dynamodb:8000
+        i=0
+        while [ "$$i" -lt 90 ]; do
+          if aws dynamodb list-tables --endpoint-url "$$ENDPOINT" --region eu-north-1 >/dev/null 2>&1; then
+            break
+          fi
+          i=$$((i + 1))
+          sleep 1
+        done
+        if [ "$$i" -ge 90 ]; then
+          echo "DynamoDB did not become ready in time"
+          exit 1
+        fi
+        if aws dynamodb describe-table --table-name math-history-ddb-local --endpoint-url "$$ENDPOINT" >/dev/null 2>&1; then
+          echo "Table math-history-ddb-local already exists."
+          exit 0
+        fi
+        aws dynamodb create-table --cli-input-json file:///migration/table.json --endpoint-url "$$ENDPOINT"
+        echo "Table math-history-ddb-local created."
+
+  minio:
+    image: minio/minio:latest
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: local
+      MINIO_ROOT_PASSWORD: locallocal
+    volumes:
+      - minio_data:/data
+
+  s3-init:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    environment:
+      MINIO_ROOT_USER: local
+      MINIO_ROOT_PASSWORD: locallocal
+    restart: "no"
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        set -e
+        i=0
+        until mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" 2>/dev/null; do
+          i=$$((i + 1))
+          if [ "$$i" -ge 90 ]; then
+            echo "mc: timeout connecting to MinIO"
+            exit 1
+          fi
+          sleep 1
+        done
+        mc mb -p "local/math-history-server-data-local" || true
+        echo "Bucket math-history-server-data-local ready."
+
+volumes:
+  ddb_data:
+  minio_data:
