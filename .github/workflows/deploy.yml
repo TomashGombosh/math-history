@@ -24,7 +24,7 @@
 #     CORS_ORIGIN — optional browser origin for API CORS
 #   Naming: Serverless --stage is stage (development branch) or prod (main), matching TF_VAR_environment.
 
-name: Deploy infrastructure
+name: Deploy application
 
 on:
   push:
