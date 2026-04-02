@@ -56,7 +56,7 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_DYNAMODB_ROLE_TO_ASSUME }}
           expected-aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
-          state-bucket: ${{ secrets.TF_STATE_BUCKET }}
+          state-bucket: ${{ vars.TF_STATE_BUCKET }}
           lock-table: ${{ secrets.TF_LOCK_TABLE }}
           state-key: dynamodb/${{ steps.target.outputs.tf_env }}.tfstate
           tf-environment: ${{ steps.target.outputs.tf_env }}
@@ -87,7 +87,7 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_COGNITO_ROLE_TO_ASSUME }}
           expected-aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
-          state-bucket: ${{ secrets.TF_STATE_BUCKET }}
+          state-bucket: ${{ vars.TF_STATE_BUCKET }}
           lock-table: ${{ secrets.TF_LOCK_TABLE }}
           state-key: cognito/${{ steps.target.outputs.tf_env }}.tfstate
           tf-environment: ${{ steps.target.outputs.tf_env }}
