@@ -1,0 +1,10 @@
+# Copy to backend.hcl (do not commit real values if your policy forbids it) and run:
+#   terraform init -backend-config=backend.hcl
+#
+# Create the bucket and DynamoDB lock table once (bootstrap) before the first init.
+
+bucket         = "YOUR_TF_STATE_BUCKET"
+key            = "cognito/stage.tfstate"
+region         = "eu-north-1"
+dynamodb_table = "YOUR_TF_LOCK_TABLE"
+encrypt        = true
