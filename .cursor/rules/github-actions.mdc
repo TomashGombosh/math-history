@@ -210,7 +210,7 @@ runs:
   using: 'composite'
   steps:
     - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
+      uses: hashicorp/setup-terraform@v4
     - name: Configure Backend
       shell: bash
       run: |
