@@ -24,11 +24,65 @@ jobs:
       - name: Start DynamoDB Local & MinIO
         run: docker compose up -d dynamodb minio
 
+      # Use host ports (127.0.0.1) + --network host so one-off aws/mc containers do not hang on compose DNS.
+      - name: Wait for DynamoDB Local (port 8000)
+        run: |
+          for i in $(seq 1 90); do
+            if nc -z 127.0.0.1 8000 2>/dev/null; then
+              echo "DynamoDB Local is up."
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Timeout waiting for DynamoDB on 8000"
+          exit 1
+
       - name: Create DynamoDB table (migration)
-        run: docker compose run --rm dynamodb-migrate
+        run: |
+          docker run --rm --network host \
+            -v "${GITHUB_WORKSPACE}/server_v2/migration/table.json:/migration/table.json:ro" \
+            -e AWS_ACCESS_KEY_ID=local \
+            -e AWS_SECRET_ACCESS_KEY=local \
+            -e AWS_DEFAULT_REGION=eu-north-1 \
+            amazon/aws-cli:latest \
+            sh -ec '
+              ENDPOINT=http://127.0.0.1:8000
+              if aws dynamodb describe-table --table-name math-history-ddb-local --endpoint-url "$ENDPOINT" >/dev/null 2>&1; then
+                echo "Table math-history-ddb-local already exists."
+                exit 0
+              fi
+              aws dynamodb create-table --cli-input-json file:///migration/table.json --endpoint-url "$ENDPOINT"
+              echo "Table created."
+            '
+
+      - name: Wait for MinIO (port 9000)
+        run: |
+          for i in $(seq 1 90); do
+            if nc -z 127.0.0.1 9000 2>/dev/null; then
+              echo "MinIO is up."
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Timeout waiting for MinIO on 9000"
+          exit 1
 
       - name: Create S3 bucket (MinIO init)
-        run: docker compose run --rm s3-init
+        run: |
+          docker run --rm --network host \
+            -e MINIO_ROOT_USER=local \
+            -e MINIO_ROOT_PASSWORD=locallocal \
+            minio/mc:latest \
+            sh -ec '
+              i=0
+              until mc alias set local http://127.0.0.1:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" 2>/dev/null; do
+                i=$((i + 1))
+                if [ "$i" -ge 90 ]; then echo "mc: timeout connecting to MinIO"; exit 1; fi
+                sleep 1
+              done
+              mc mb -p "local/math-history-server-data-local" || true
+              echo "Bucket ready."
+            '
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
