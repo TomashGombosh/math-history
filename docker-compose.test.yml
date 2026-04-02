@@ -1,4 +1,5 @@
 # Stack for server_v2 integration tests and CI (DynamoDB Local + MinIO).
+# DynamoDB Local uses -inMemory (no disk SQLite) so bind/named volumes do not hit permission errors.
 #
 # Usage (repo root):
 #   docker compose -f docker-compose.test.yml up -d dynamodb minio
@@ -13,13 +14,12 @@
 name: math-history-test
 
 services:
+  # In-memory avoids SQLite "unable to open database file" on Docker volumes (user/permission quirks).
   dynamodb:
     image: amazon/dynamodb-local:latest
     ports:
       - "8000:8000"
-    command: ["-jar", "DynamoDBLocal.jar", "-sharedDb", "-dbPath", "/data"]
-    volumes:
-      - ddb_data:/data
+    command: ["-jar", "DynamoDBLocal.jar", "-inMemory"]
 
   dynamodb-migrate:
     image: amazon/aws-cli:latest
@@ -94,5 +94,4 @@ services:
         echo "Bucket math-history-server-data-local ready."
 
 volumes:
-  ddb_data:
   minio_data:

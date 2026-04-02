@@ -21,8 +21,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Start test stack (DynamoDB + MinIO)
-        run: docker compose -f docker-compose.test.yml up
+      - name: Start test stack (headless)
+        run: docker compose -f docker-compose.test.yml up -d dynamodb minio
+
+      - name: Create DynamoDB table (migration)
+        run: docker compose -f docker-compose.test.yml run --rm dynamodb-migrate
+
+      - name: Create S3 bucket (MinIO init)
+        run: docker compose -f docker-compose.test.yml run --rm s3-init
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
