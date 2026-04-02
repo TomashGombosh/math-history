@@ -13,4 +13,4 @@ export const DEFAULT_REGION = 'eu-north-1';
 /** Local Vite is http://localhost:5173; override with CORS_ORIGIN if needed (e.g. https). */
 export const FRONT = isLocal
 	? process.env.CORS_ORIGIN?.trim() || 'http://localhost:5173'
-	: `https://math-history-${isProduction ? '' : '-stage'}.afj-solution.com`;
+	: `https://math-history${isProduction ? '' : '-stage'}.afj-solution.com`;

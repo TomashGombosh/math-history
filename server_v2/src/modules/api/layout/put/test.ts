@@ -1,12 +1,8 @@
-import { adminToken, bearerJsonHeaders, jsonBody } from '@tests/helpers/http.js';
+import { withCognitoAdminAuthorizer, jsonBody } from '@tests/helpers/http.js';
 
 module.exports = (wrapped: any, expect: any, requestContext: any) =>
 	describe('PUT /api/layout', () => {
-		let token: string;
-
-		beforeAll(async () => {
-			token = await adminToken(wrapped, requestContext, expect);
-		});
+		const adminRC = withCognitoAdminAuthorizer(requestContext);
 
 		it('round-trips layout config when saving the current public shape', async () => {
 			const getRes = await wrapped.run({
@@ -19,10 +15,10 @@ module.exports = (wrapped: any, expect: any, requestContext: any) =>
 			const cfg = jsonBody(getRes, expect);
 
 			const putRes = await wrapped.run({
-				requestContext,
+				requestContext: adminRC,
 				path: '/api/layout',
 				method: 'PUT',
-				headers: bearerJsonHeaders(token),
+				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(cfg),
 			});
 			expect(putRes.statusCode).toBe(200);

@@ -4,7 +4,7 @@ import type z from 'zod';
 import type { AppConfig } from '@config/types';
 import getConfig from '@config/env';
 import * as consts from '@config/consts';
-import { assertAuthenticatedRequest, isApiGatewayAdminAuthorizer } from '@lib/admin-auth';
+import { assertAuthenticatedRequest } from '@lib/admin-auth';
 import { ResponseWriter } from '@lib/response-writer';
 import { normalizeApiSegments, resolveModulePath } from '@lib/route-resolve';
 
@@ -145,9 +145,7 @@ export const handler = async (event: any) => {
 
 	if (!mod.publicResource) {
 		try {
-			if (!isApiGatewayAdminAuthorizer(event)) {
-				assertAuthenticatedRequest(req, event, appConfig);
-			}
+			assertAuthenticatedRequest(req, event);
 		} catch {
 			return ResponseWriter.Unauthorized({ message: 'Unauthorized' });
 		}

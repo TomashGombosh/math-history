@@ -1,20 +1,16 @@
-import { adminToken, bearerJsonHeaders, jsonBody } from '@tests/helpers/http.js';
+import { withCognitoAdminAuthorizer, jsonBody } from '@tests/helpers/http.js';
 import { TINY_JPEG } from '@tests/helpers/binary.js';
 
 module.exports = (wrapped: any, expect: any, requestContext: any) =>
 	describe('POST /api/upload/presign', () => {
-		let token: string;
-
-		beforeAll(async () => {
-			token = await adminToken(wrapped, requestContext, expect);
-		});
+		const adminRC = withCognitoAdminAuthorizer(requestContext);
 
 		it('rejects unsupported content type (schema allows only jpeg, png, webp)', async () => {
 			const res = await wrapped.run({
-				requestContext,
+				requestContext: adminRC,
 				path: '/api/upload/presign',
 				method: 'POST',
-				headers: bearerJsonHeaders(token),
+				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					contentType: 'image/gif',
 					originalFileName: 'a.gif',
@@ -25,10 +21,10 @@ module.exports = (wrapped: any, expect: any, requestContext: any) =>
 
 		it('returns presigned PUT fields for a valid image request', async () => {
 			const res = await wrapped.run({
-				requestContext,
+				requestContext: adminRC,
 				path: '/api/upload/presign',
 				method: 'POST',
-				headers: bearerJsonHeaders(token),
+				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					scope: 'common',
 					contentType: 'image/jpeg',

@@ -1,18 +1,17 @@
-import { adminToken, bearerJsonHeaders, jsonBody } from '@tests/helpers/http.js';
+import { withCognitoAdminAuthorizer, jsonBody } from '@tests/helpers/http.js';
 
 module.exports = (wrapped: any, expect: any, requestContext: any) =>
 	describe('GET /api/teachers/by-slug/:slug', () => {
-		let token: string;
+		const adminRC = withCognitoAdminAuthorizer(requestContext);
 		let slug: string;
 
 		beforeAll(async () => {
-			token = await adminToken(wrapped, requestContext, expect);
 			const suffix = Date.now().toString(36);
 			const create = await wrapped.run({
-				requestContext,
+				requestContext: adminRC,
 				path: '/api/teachers',
 				method: 'POST',
-				headers: bearerJsonHeaders(token),
+				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					name: `Slug Lookup ${suffix}`,
 					position: 'Professor',

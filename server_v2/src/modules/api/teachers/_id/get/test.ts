@@ -1,17 +1,16 @@
-import { adminToken, bearerJsonHeaders, jsonBody } from '@tests/helpers/http.js';
+import { withCognitoAdminAuthorizer, jsonBody } from '@tests/helpers/http.js';
 
 module.exports = (wrapped: any, expect: any, requestContext: any) =>
 	describe('GET /api/teachers/:id', () => {
-		let token: string;
+		const adminRC = withCognitoAdminAuthorizer(requestContext);
 		let id: number;
 
 		beforeAll(async () => {
-			token = await adminToken(wrapped, requestContext, expect);
 			const create = await wrapped.run({
-				requestContext,
+				requestContext: adminRC,
 				path: '/api/teachers',
 				method: 'POST',
-				headers: bearerJsonHeaders(token),
+				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					name: `GetById ${Date.now().toString(36)}`,
 				}),
@@ -22,10 +21,10 @@ module.exports = (wrapped: any, expect: any, requestContext: any) =>
 
 		it('returns teacher by id when authenticated', async () => {
 			const res = await wrapped.run({
-				requestContext,
+				requestContext: adminRC,
 				path: `/api/teachers/${id}`,
 				method: 'GET',
-				headers: bearerJsonHeaders(token),
+				headers: { 'Content-Type': 'application/json' },
 			});
 			expect(res.statusCode).toBe(200);
 			const body = jsonBody(res, expect) as { id: number };
@@ -34,10 +33,10 @@ module.exports = (wrapped: any, expect: any, requestContext: any) =>
 
 		it('returns 404 for missing id', async () => {
 			const res = await wrapped.run({
-				requestContext,
+				requestContext: adminRC,
 				path: '/api/teachers/999999991',
 				method: 'GET',
-				headers: bearerJsonHeaders(token),
+				headers: { 'Content-Type': 'application/json' },
 			});
 			expect(res.statusCode).toBe(404);
 		});

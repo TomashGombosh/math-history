@@ -43,7 +43,7 @@ Jest runs a single entry: **`jest.config.cjs`** → `testMatch`: **`.build/tests
 
 - **`await wrapped.run({ requestContext, path, method, headers, queryStringParameters?, body? })`**
 - **`path`** must match **`resolveModulePath`** / **`normalizeApiSegments`** in **`src/lib/route-resolve.ts`** (e.g. **`/api/graduates`** for **`api/graduates/get`**).
-- Protected routes: **`Authorization: Bearer <token>`** from **`POST /api/auth/login`** (see **`src/tests/helpers/http.ts`** **`adminToken`**) or env **`JWT`** if you pre-seed; public routes omit it.
+- Protected routes: pass **`requestContext`** from **`withCognitoAdminAuthorizer(requestContext)`** (see **`src/tests/helpers/http.ts`**) to mimic API Gateway Cognito JWT claims; public routes use the plain **`requestContext`**.
 
 ## Assertions
 
@@ -51,7 +51,7 @@ Jest runs a single entry: **`jest.config.cjs`** → `testMatch`: **`.build/tests
 
 ## `npm test` and local AWS emulation
 
-- **`npm test`** sets **`NODE_ENV=test`**, **`APP_SECRETS_ENABLED=false`**, and **`NODE_OPTIONS=--experimental-vm-modules`** (needed for AWS SDK v3 under Jest).
+- **`npm test`** sets **`NODE_ENV=test`** and **`NODE_OPTIONS=--experimental-vm-modules`** (needed for AWS SDK v3 under Jest).
 - Point **`DYNAMODB_ENDPOINT`** at **DynamoDB Local** and ensure the table exists (repo **`docker-compose.yml`**: **`dynamodb`** + **`dynamodb-migrate`**).
 - For **S3** / **`POST /api/upload/presign`**: set **`S3_ENDPOINT`** (e.g. MinIO `http://127.0.0.1:9000`), **`S3_DATA_BUCKET`**, and **`AWS_ACCESS_KEY_ID`** / **`AWS_SECRET_ACCESS_KEY`** matching the compose services. **`getS3Client()`** uses path-style signing when **`S3_ENDPOINT`** is set.
 

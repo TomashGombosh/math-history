@@ -2,6 +2,18 @@ org: afjsolution
 service: math-history-server
 frameworkVersion: "4"
 
+# Table / bucket: set DYNAMODB_TABLE_NAME and S3_DATA_BUCKET at deploy to match Terraform
+# (e.g. math-history-server-ddb-stage). Falls back to ${service}-ddb-${sls:stage}.
+custom:
+  dynamodbTableName: ${env:DYNAMODB_TABLE_NAME, '${self:service}-ddb-${sls:stage}'}
+  s3DataBucket: ${env:S3_DATA_BUCKET, '${self:service}-data-${sls:stage}'}
+  logRetentionInDays:
+    prod: 90
+    default: 7
+  # HTTP API JWT authorizer (set at deploy; see repo docs or Terraform cognito outputs).
+  cognitoJwtIssuer: ${env:COGNITO_JWT_ISSUER}
+  cognitoJwtAudience: ${env:COGNITO_JWT_AUDIENCE}
+
 provider:
   name: aws
   region: ${aws:region}
@@ -11,20 +23,23 @@ provider:
   versionFunctions: false
   memorySize: 256
   timeout: 29
+  httpApi:
+    authorizers:
+      cognitoJwt:
+        type: jwt
+        identitySource: $request.header.Authorization
+        issuerUrl: ${self:custom.cognitoJwtIssuer}
+        audience:
+          - ${self:custom.cognitoJwtAudience}
   iam:
     role:
       name: sls-tpl-${opt:stage, 'stage'}-role
       statements:
-        # - Effect: Allow
-        #   Action:
-        #     - secretsmanager:GetSecretValue
-        #   Resource:
-        #     - arn:aws:secretsmanager:${aws:region}:${aws:accountId}:secret:${env:APP_SECRET_ID}*
         - Effect: "Allow"
           Action:
             - "s3:ListBucket"
           Resource:
-            - "arn:aws:s3:::${self:service}-data-${opt:stage, 'stage'}"
+            - "arn:aws:s3:::${self:custom.s3DataBucket}"
         - Effect: "Allow"
           Action:
             - "s3:GetObject"
@@ -33,7 +48,7 @@ provider:
             - "s3:PutObjectAcl"
             - "s3:DeleteObject"
           Resource:
-            - "arn:aws:s3:::${self:service}-data-${opt:stage, 'stage'}/*"
+            - "arn:aws:s3:::${self:custom.s3DataBucket}/*"
         - Effect: Allow
           Action:
             - dynamodb:GetItem
@@ -46,19 +61,24 @@ provider:
             - dynamodb:BatchWriteItem
             - dynamodb:TransactWriteItems
           Resource:
-            - Fn::GetAtt: [MainTable, Arn]
-            - Fn::Join:
-                - ""
-                - - Fn::GetAtt: [MainTable, Arn]
-                  - "/index/*"
+            - Fn::Sub:
+                - 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${DynamoTable}'
+                - DynamoTable: ${self:custom.dynamodbTableName}
+            - Fn::Sub:
+                - 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${DynamoTable}/index/*'
+                - DynamoTable: ${self:custom.dynamodbTableName}
   stackTags:
     Name: "math-history-server"
   environment:
-    NODE_ENV: ${env:NODE_ENV}
-    # Override via .env for serverless-offline + DynamoDB Local (see docker-compose dynamodb service)
-    DYNAMODB_TABLE_NAME: ${env:DYNAMODB_TABLE_NAME, '${self:service}-ddb-${sls:stage}'}
+    # Aligned with server_v2/.env.example (override at deploy for prod secrets / table names).
+    AWS_REGION: ${aws:region}
+    AWS_SDK_LOG_LEVEL: ${env:AWS_SDK_LOG_LEVEL, 'warn'}
+    NODE_ENV: ${env:NODE_ENV, 'stage'}
+    DYNAMODB_TABLE_NAME: ${self:custom.dynamodbTableName}
     DYNAMODB_ENDPOINT: ${env:DYNAMODB_ENDPOINT, ''}
-    S3_DATA_BUCKET: ${self:service}-data-${sls:stage}
+    S3_DATA_BUCKET: ${self:custom.s3DataBucket}
+    S3_ENDPOINT: ${env:S3_ENDPOINT, ''}
+    CORS_ORIGIN: ${env:CORS_ORIGIN, ''}
   vpc:
     securityGroupIds:
       - ${env:SECURITY_GROUP_ID}
@@ -69,46 +89,40 @@ functions:
   api:
     handler: .build/index.handler
     events:
+      # Public routes (no JWT at the gateway — same as publicResource in code)
+      - httpApi:
+          path: /api/openapi
+          method: GET
+      - httpApi:
+          path: /api/teachers
+          method: GET
+      - httpApi:
+          path: /api/teachers/filters
+          method: GET
+      - httpApi:
+          path: /api/teachers/by-slug/{slug}
+          method: GET
+      - httpApi:
+          path: /api/layout
+          method: GET
+      - httpApi:
+          path: /api/graduates/years
+          method: GET
+      - httpApi:
+          path: /api/graduates/specialties
+          method: GET
+      - httpApi:
+          path: /api/graduates
+          method: GET
+      - httpApi:
+          path: /api/graduates/{year}
+          method: GET
       - httpApi:
           path: /{proxy+}
           method: "*"
-
-resources:
-  Resources:
-    MainTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: ${self:service}-ddb-${sls:stage}
-        BillingMode: PAY_PER_REQUEST
-        AttributeDefinitions:
-          - AttributeName: pk
-            AttributeType: S
-          - AttributeName: sk
-            AttributeType: S
-          - AttributeName: gsi1pk
-            AttributeType: S
-          - AttributeName: gsi1sk
-            AttributeType: S
-        KeySchema:
-          - AttributeName: pk
-            KeyType: HASH
-          - AttributeName: sk
-            KeyType: RANGE
-        GlobalSecondaryIndexes:
-          - IndexName: GSI1
-            KeySchema:
-              - AttributeName: gsi1pk
-                KeyType: HASH
-              - AttributeName: gsi1sk
-                KeyType: RANGE
-            Projection:
-              ProjectionType: ALL
+          authorizer:
+            name: cognitoJwt
 
 plugins:
   - serverless-plugin-resource-tagging
   - serverless-offline
-
-custom:
-  logRetentionInDays:
-    prod: 90
-    default: 7

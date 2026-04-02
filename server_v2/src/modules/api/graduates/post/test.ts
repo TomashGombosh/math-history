@@ -1,36 +1,35 @@
 import { TEST_GRADUATE_YEAR_CREATE, TEST_GRADUATE_YEAR_DELETE, TEST_GRADUATE_YEAR_UPDATE } from 'tests/consts';
-import { adminToken, bearerJsonHeaders, jsonBody } from '@tests/helpers/http.js';
+import { withCognitoAdminAuthorizer, jsonBody } from '@tests/helpers/http.js';
 
-async function deleteYearQuiet(wrapped: any, requestContext: unknown, token: string, year: number): Promise<void> {
+async function deleteYearQuiet(wrapped: any, adminRC: unknown, year: number): Promise<void> {
 	await wrapped.run({
-		requestContext,
+		requestContext: adminRC,
 		path: `/api/graduates/${year}`,
 		method: 'DELETE',
-		headers: bearerJsonHeaders(token),
+		headers: { 'Content-Type': 'application/json' },
 	});
 }
 
 module.exports = (wrapped: any, expect: any, requestContext: any) =>
 	describe('POST /api/graduates', () => {
-		let token: string;
+		const adminRC = withCognitoAdminAuthorizer(requestContext);
 
 		beforeAll(async () => {
-			token = await adminToken(wrapped, requestContext, expect);
-			await deleteYearQuiet(wrapped, requestContext, token, TEST_GRADUATE_YEAR_CREATE);
-			await deleteYearQuiet(wrapped, requestContext, token, TEST_GRADUATE_YEAR_UPDATE);
-			await deleteYearQuiet(wrapped, requestContext, token, TEST_GRADUATE_YEAR_DELETE);
+			await deleteYearQuiet(wrapped, adminRC, TEST_GRADUATE_YEAR_CREATE);
+			await deleteYearQuiet(wrapped, adminRC, TEST_GRADUATE_YEAR_UPDATE);
+			await deleteYearQuiet(wrapped, adminRC, TEST_GRADUATE_YEAR_DELETE);
 		});
 
 		afterAll(async () => {
-			await deleteYearQuiet(wrapped, requestContext, token, TEST_GRADUATE_YEAR_CREATE);
+			await deleteYearQuiet(wrapped, adminRC, TEST_GRADUATE_YEAR_CREATE);
 		});
 
 		it('creates a cohort and public year detail includes the student', async () => {
 			const post = await wrapped.run({
-				requestContext,
+				requestContext: adminRC,
 				path: '/api/graduates',
 				method: 'POST',
-				headers: bearerJsonHeaders(token),
+				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					year: TEST_GRADUATE_YEAR_CREATE,
 					title: 'Integration cohort',
@@ -54,7 +53,7 @@ module.exports = (wrapped: any, expect: any, requestContext: any) =>
 			expect(names).toContain('Student A');
 		});
 
-		it('returns 401 without JWT', async () => {
+		it('returns 401 without admin authorizer context', async () => {
 			const res = await wrapped.run({
 				requestContext,
 				path: '/api/graduates',
