@@ -21,6 +21,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Start DynamoDB Local & MinIO
+        run: docker compose up -d dynamodb minio
+
+      - name: Create DynamoDB table (migration)
+        run: docker compose run --rm dynamodb-migrate
+
+      - name: Create S3 bucket (MinIO init)
+        run: docker compose run --rm s3-init
+
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
@@ -36,14 +45,29 @@ jobs:
 
       - name: Run tests
         working-directory: server_v2
-        env: 
-            AWS_REGION: eu-north-1
-            NODE_ENV: test
-            SECURITY_GROUP_ID: sg-xxxxxxxxxxxxxxxxx
-            SUBNET_ID: subnet-xxxxxxxxxxxxxxxxx
-            RATE_LIMIT: 100
-            BURST_LIMIT: 200
+        env:
+          AWS_REGION: eu-north-1
+          AWS_ACCESS_KEY_ID: local
+          AWS_SECRET_ACCESS_KEY: locallocal
+          NODE_ENV: test
+          DYNAMODB_TABLE_NAME: math-history-ddb-local
+          DYNAMODB_ENDPOINT: http://127.0.0.1:8000
+          S3_DATA_BUCKET: math-history-server-data-local
+          S3_ENDPOINT: http://127.0.0.1:9000
+          SECURITY_GROUP_ID: sg-xxxxxxxxxxxxxxxxx
+          SUBNET_ID: subnet-xxxxxxxxxxxxxxxxx
+          RATE_LIMIT: 100
+          BURST_LIMIT: 200
+          JWT_SECRET: dev_secret
+          JWT_EXPIRES_IN: 8h
+          ADMIN_USERNAME: admin
+          ADMIN_PASSWORD: admin
+          TRUST_API_GATEWAY_AUTH: "false"
         run: npm run test
+
+      - name: Stop containers
+        if: always()
+        run: docker compose down -v
 
 
   client-validate:
@@ -69,4 +93,6 @@ jobs:
 
       - name: Run build
         working-directory: client
+        env:
+          VITE_API_URL: http://localhost:3000
         run: npm run build

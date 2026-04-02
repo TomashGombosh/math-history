@@ -1,12 +1,29 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Seo } from "../lib/seo";
-import { mockYears } from "../mocks/years";
-import { getMockTeachersPage } from "../mocks/teachers";
+import { apiGet } from "../lib/api";
+import type { GraduateYearSummary, TeacherDto, TeachersListResponse } from "../lib/apiTypes";
 import "./HomePage.css";
 
-type Teacher = { id: number; slug: string; name: string; imageUrl?: string };
+type Teacher = { id: number; slug: string; name: string; imageUrl?: string | null };
 type YearItem = { year: number; totalStudents: number; totalWithHonours: number };
+
+function pickTeachers(dtos: TeacherDto[]): Teacher[] {
+  return dtos.map((t) => ({
+    id: t.id,
+    slug: t.slug,
+    name: t.name,
+    imageUrl: t.imageUrl,
+  }));
+}
+
+function pickYears(rows: GraduateYearSummary[]): YearItem[] {
+  return rows.map((r) => ({
+    year: r.year,
+    totalStudents: r.totalStudents,
+    totalWithHonours: r.totalWithHonours,
+  }));
+}
 
 export default function HomePage() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -14,11 +31,16 @@ export default function HomePage() {
 
   useEffect(() => {
     void Promise.all([
-      Promise.resolve().then(() => setTeachers(getMockTeachersPage(1, 12).teachers as Teacher[])),
-      Promise.resolve().then(() =>
-        setYears([...mockYears].sort((a, b) => b.year - a.year).slice(0, 12))
+      apiGet<TeachersListResponse>("/api/teachers", { page: 1, limit: 12 }).then((r) =>
+        setTeachers(pickTeachers(r.teachers))
       ),
-    ]);
+      apiGet<GraduateYearSummary[]>("/api/graduates/years").then((rows) =>
+        setYears(pickYears(rows).sort((a, b) => b.year - a.year).slice(0, 12))
+      ),
+    ]).catch(() => {
+      setTeachers([]);
+      setYears([]);
+    });
   }, []);
 
   return (
@@ -31,24 +53,22 @@ export default function HomePage() {
       <section className="home-block intro-section">
         <h1>Математики УжНУ — історія викладачів та випускників</h1>
         <p>
-          Цей сайт створений для збереження та представлення історії математичного
-          факультету Ужгородського національного університету. Тут зібрано
-          інформацію про викладачів, які формували факультет у різні роки,
-          займалися науковою діяльністю, навчали студентів та зробили вагомий
-          внесок у розвиток математичної освіти на Закарпатті.
+          Цей сайт створений для збереження та представлення історії математичного факультету Ужгородського національного
+          університету. Тут зібрано інформацію про викладачів, які формували факультет у різні роки, займалися науковою
+          діяльністю, навчали студентів та зробили вагомий внесок у розвиток математичної освіти на Закарпатті.
         </p>
         <p>
-          Окрім викладачів, на сайті можна переглядати списки випускників
-          факультету за роками. Для кожного року вказано кількість студентів, а
-          також кількість тих, хто закінчив навчання з відзнакою. Це допомагає
-          простежити розвиток факультету, кількісні зміни та успішність студентів
-          у різні періоди.
+          Окрім викладачів, на сайті можна переглядати списки випускників факультету за роками. Для кожного року вказано
+          кількість студентів, а також кількість тих, хто закінчив навчання з відзнакою. Це допомагає простежити
+          розвиток факультету, кількісні зміни та успішність студентів у різні періоди.
         </p>
       </section>
       <section className="home-block">
         <div className="home-header">
           <h2>Викладачі</h2>
-          <Link to="/teachers" className="home-link">Усі викладачі →</Link>
+          <Link to="/teachers" className="home-link">
+            Усі викладачі →
+          </Link>
         </div>
         <div className="teachers-grid">
           {teachers.map((t) => (
@@ -67,7 +87,9 @@ export default function HomePage() {
       <section className="home-block">
         <div className="home-header">
           <h2>Роки випуску</h2>
-          <Link to="/graduates" className="home-link">Усі випуски →</Link>
+          <Link to="/graduates" className="home-link">
+            Усі випуски →
+          </Link>
         </div>
         <div className="years-grid">
           {years.map((item) => (

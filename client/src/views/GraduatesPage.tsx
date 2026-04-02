@@ -1,12 +1,28 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { mockYears } from "../mocks/years";
 import { Seo } from "../lib/seo";
+import { apiGet } from "../lib/api";
+import type { GraduateYearSummary } from "../lib/apiTypes";
 import "./GraduatesPage.css";
 
 type YearItem = { year: number; totalStudents: number; totalWithHonours: number };
 
 export default function GraduatesPage() {
-  const years: YearItem[] = mockYears;
+  const [years, setYears] = useState<YearItem[]>([]);
+
+  useEffect(() => {
+    void apiGet<GraduateYearSummary[]>("/api/graduates/years")
+      .then((rows) =>
+        setYears(
+          rows.map((r) => ({
+            year: r.year,
+            totalStudents: r.totalStudents,
+            totalWithHonours: r.totalWithHonours,
+          }))
+        )
+      )
+      .catch(() => setYears([]));
+  }, []);
 
   return (
     <div className="graduates-page">

@@ -1,6 +1,13 @@
+function resolveApiBaseUrl(): string {
+  const fromEnv = import.meta.env.VITE_API_URL;
+  if (typeof fromEnv === "string" && fromEnv.trim() !== "") {
+    return fromEnv.replace(/\/$/, "");
+  }
+  return window.location.origin;
+}
+
 export async function apiGet<T>(path: string, params?: Record<string, unknown>) {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
-  const url = new URL(path, baseUrl);
+  const url = new URL(path, `${resolveApiBaseUrl()}/`);
   if (params) {
     for (const [key, value] of Object.entries(params)) {
       if (value === undefined || value === null || value === "") continue;
@@ -22,8 +29,7 @@ export async function apiGet<T>(path: string, params?: Record<string, unknown>) 
 }
 
 export async function apiPost<T>(path: string, body: unknown) {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
-  const url = new URL(path, baseUrl);
+  const url = new URL(path, `${resolveApiBaseUrl()}/`);
   const response = await fetch(url.toString(), {
     method: "POST",
     headers: { "Content-Type": "application/json" },

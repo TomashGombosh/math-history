@@ -1,12 +1,29 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Seo } from "../lib/seo";
-import { getMockTeachersPage } from "../mocks/teachers";
+import { apiGet } from "../lib/api";
+import type { TeacherDto, TeachersListResponse } from "../lib/apiTypes";
 import "./TeachersPage.css";
 
-type Teacher = { id: number; slug: string; name: string; imageUrl?: string };
+type Teacher = { id: number; slug: string; name: string; imageUrl?: string | null };
 
 export default function TeachersPage() {
-  const teachers = getMockTeachersPage(1, 24).teachers as Teacher[];
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+
+  useEffect(() => {
+    void apiGet<TeachersListResponse>("/api/teachers", { page: 1, limit: 24 })
+      .then((r) =>
+        setTeachers(
+          r.teachers.map((t: TeacherDto) => ({
+            id: t.id,
+            slug: t.slug,
+            name: t.name,
+            imageUrl: t.imageUrl,
+          }))
+        )
+      )
+      .catch(() => setTeachers([]));
+  }, []);
 
   return (
     <div className="page-wrapper">
