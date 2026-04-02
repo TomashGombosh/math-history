@@ -103,7 +103,7 @@ jobs:
           state-key: cognito/${{ steps.target.outputs.tf_env }}.tfstate
           tf-environment: ${{ steps.target.outputs.tf_env }}
 
-  deploy-s3-data:
+  deploy-s3-image-bucket:
     name: Terraform apply (S3 uploads)
     runs-on: ubuntu-24.04
     environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'stage' }}
@@ -137,7 +137,7 @@ jobs:
   deploy-server:
     name: Deploy server (Serverless)
     runs-on: ubuntu-24.04
-    needs: [deploy-dynamodb, deploy-cognito, deploy-s3-data]
+    needs: [deploy-dynamodb, deploy-cognito, deploy-s3-image-bucket]
     environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'stage' }}
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}

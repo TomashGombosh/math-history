@@ -1,0 +1,9 @@
+# Copy to terraform.tfvars (optional for local use; CI sets TF_VAR_* instead).
+# environment must be "stage" or "prod".
+
+aws_region   = "eu-north-1"
+environment  = "stage"
+project_name = "math-history-server"
+
+# Optional: restrict browser uploads to your site (recommended for prod).
+# cors_allowed_origins = ["https://your-app.example.com"]
