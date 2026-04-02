@@ -7,7 +7,6 @@ module.exports = (wrapped: any, expect: any, requestContext: any) =>
 				method: 'GET',
 				headers: {
 					'Content-Type': 'application/json',
-					Authorization: `Bearer ${process.env.JWT}`,
 				},
 			});
 

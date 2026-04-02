@@ -1,14 +1,10 @@
-import { adminToken, bearerJsonHeaders, jsonBody } from '@tests/helpers/http.js';
+import { withCognitoAdminAuthorizer, jsonBody } from '@tests/helpers/http.js';
 
 module.exports = (wrapped: any, expect: any, requestContext: any) =>
 	describe('GET /api/teachers/meta', () => {
-		let token: string;
+		const adminRC = withCognitoAdminAuthorizer(requestContext);
 
-		beforeAll(async () => {
-			token = await adminToken(wrapped, requestContext, expect);
-		});
-
-		it('requires admin JWT', async () => {
+		it('requires Cognito admin context', async () => {
 			const res = await wrapped.run({
 				requestContext,
 				path: '/api/teachers/meta',
@@ -20,10 +16,10 @@ module.exports = (wrapped: any, expect: any, requestContext: any) =>
 
 		it('returns meta aligned with filter facets', async () => {
 			const res = await wrapped.run({
-				requestContext,
+				requestContext: adminRC,
 				path: '/api/teachers/meta',
 				method: 'GET',
-				headers: bearerJsonHeaders(token),
+				headers: { 'Content-Type': 'application/json' },
 			});
 			expect(res.statusCode).toBe(200);
 			const body = jsonBody(res, expect) as { positions: unknown[]; degrees: unknown[] };

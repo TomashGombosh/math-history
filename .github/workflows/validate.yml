@@ -58,11 +58,6 @@ jobs:
           SUBNET_ID: subnet-xxxxxxxxxxxxxxxxx
           RATE_LIMIT: 100
           BURST_LIMIT: 200
-          JWT_SECRET: dev_secret
-          JWT_EXPIRES_IN: 8h
-          ADMIN_USERNAME: admin
-          ADMIN_PASSWORD: admin
-          TRUST_API_GATEWAY_AUTH: "false"
         run: npm run test
 
       - name: Stop test stack

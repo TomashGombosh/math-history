@@ -8,14 +8,13 @@ const PUBLIC_DESCRIPTION = `
 ## Authentication
 
 - **Public** operations do not require a token (see paths tagged **Public**).
-- **Protected** operations require \`Authorization: Bearer <jwt>\` (JWT from \`POST /api/auth/login\`, or API Gateway V2 authorizer when \`TRUST_API_GATEWAY_AUTH\` is enabled).
+- **Protected** operations require a valid **Amazon Cognito** access or ID token (JWT) in \`Authorization: Bearer <token>\`. API Gateway validates the JWT before invoking Lambda; the app checks \`cognito:groups\` (include \`admin\`) or claim \`role: admin\`.
 
 ## Public API surface
 
 | Method | Path | Purpose |
 |--------|------|---------|
 | GET | /openapi | This OpenAPI document |
-| POST | /api/auth/login | Admin login; returns JWT |
 | GET | /api/teachers | Paginated teacher list (query: page, limit, search, sortBy, sortDir, positions, degrees) |
 | GET | /api/teachers/filters | Distinct positions and degrees for filters |
 | GET | /api/teachers/by-slug/{slug} | Teacher by URL slug |
@@ -42,17 +41,14 @@ export const handler = async (ctx: Engine) => {
 				description: 'Base URL for the math-history-server',
 			},
 		],
-		tags: [
-			{ name: 'Public', description: 'No authentication required.' },
-			{ name: 'Authentication', description: 'Obtain JWT for protected routes.' },
-		],
+		tags: [{ name: 'Public', description: 'No authentication required.' }],
 		components: {
 			securitySchemes: {
 				bearerAuth: {
 					type: 'http',
 					scheme: 'bearer',
 					bearerFormat: 'JWT',
-					description: 'Admin JWT from POST /api/auth/login (role: admin).',
+					description: 'Amazon Cognito JWT (admin group or role claim).',
 				},
 			},
 		},
@@ -67,46 +63,6 @@ export const handler = async (ctx: Engine) => {
 						200: {
 							description: 'OpenAPI 3.0 JSON',
 						},
-					},
-				},
-			},
-			'/api/auth/login': {
-				post: {
-					tags: ['Authentication', 'Public'],
-					summary: 'Admin login',
-					description: 'Returns a JWT for use on protected routes.',
-					security: [],
-					requestBody: {
-						required: true,
-						content: {
-							'application/json': {
-								schema: {
-									type: 'object',
-									required: ['username', 'password'],
-									properties: {
-										username: { type: 'string' },
-										password: { type: 'string' },
-									},
-								},
-							},
-						},
-					},
-					responses: {
-						200: {
-							description: 'JWT issued',
-							content: {
-								'application/json': {
-									schema: {
-										type: 'object',
-										properties: {
-											token: { type: 'string' },
-										},
-									},
-								},
-							},
-						},
-						400: { description: 'Missing credentials' },
-						401: { description: 'Invalid credentials' },
 					},
 				},
 			},

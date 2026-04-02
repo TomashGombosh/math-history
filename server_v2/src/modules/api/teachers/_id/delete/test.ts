@@ -1,17 +1,16 @@
-import { adminToken, bearerJsonHeaders, jsonBody } from '@tests/helpers/http.js';
+import { withCognitoAdminAuthorizer, jsonBody } from '@tests/helpers/http.js';
 
 module.exports = (wrapped: any, expect: any, requestContext: any) =>
 	describe('DELETE /api/teachers/:id', () => {
-		let token: string;
+		const adminRC = withCognitoAdminAuthorizer(requestContext);
 		let id: number;
 
 		beforeAll(async () => {
-			token = await adminToken(wrapped, requestContext, expect);
 			const create = await wrapped.run({
-				requestContext,
+				requestContext: adminRC,
 				path: '/api/teachers',
 				method: 'POST',
-				headers: bearerJsonHeaders(token),
+				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					name: `DeleteMe ${Date.now().toString(36)}`,
 				}),
@@ -22,18 +21,18 @@ module.exports = (wrapped: any, expect: any, requestContext: any) =>
 
 		it('deletes teacher and follow-up GET is 404', async () => {
 			const del = await wrapped.run({
-				requestContext,
+				requestContext: adminRC,
 				path: `/api/teachers/${id}`,
 				method: 'DELETE',
-				headers: bearerJsonHeaders(token),
+				headers: { 'Content-Type': 'application/json' },
 			});
 			expect(del.statusCode).toBe(200);
 
 			const get = await wrapped.run({
-				requestContext,
+				requestContext: adminRC,
 				path: `/api/teachers/${id}`,
 				method: 'GET',
-				headers: bearerJsonHeaders(token),
+				headers: { 'Content-Type': 'application/json' },
 			});
 			expect(get.statusCode).toBe(404);
 		});

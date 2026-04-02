@@ -1,23 +1,22 @@
 import { TEST_GRADUATE_YEAR_UPDATE } from 'tests/consts';
-import { adminToken, bearerJsonHeaders, jsonBody } from '@tests/helpers/http.js';
+import { withCognitoAdminAuthorizer, jsonBody } from '@tests/helpers/http.js';
 
 module.exports = (wrapped: any, expect: any, requestContext: any) =>
 	describe('PUT /api/graduates/:year', () => {
-		let token: string;
+		const adminRC = withCognitoAdminAuthorizer(requestContext);
 
 		beforeAll(async () => {
-			token = await adminToken(wrapped, requestContext, expect);
 			await wrapped.run({
-				requestContext,
+				requestContext: adminRC,
 				path: `/api/graduates/${TEST_GRADUATE_YEAR_UPDATE}`,
 				method: 'DELETE',
-				headers: bearerJsonHeaders(token),
+				headers: { 'Content-Type': 'application/json' },
 			});
 			const post = await wrapped.run({
-				requestContext,
+				requestContext: adminRC,
 				path: '/api/graduates',
 				method: 'POST',
-				headers: bearerJsonHeaders(token),
+				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					year: TEST_GRADUATE_YEAR_UPDATE,
 					students: [{ name: 'BeforePut', specialty: 'Physics' }],
@@ -28,19 +27,19 @@ module.exports = (wrapped: any, expect: any, requestContext: any) =>
 
 		afterAll(async () => {
 			await wrapped.run({
-				requestContext,
+				requestContext: adminRC,
 				path: `/api/graduates/${TEST_GRADUATE_YEAR_UPDATE}`,
 				method: 'DELETE',
-				headers: bearerJsonHeaders(token),
+				headers: { 'Content-Type': 'application/json' },
 			});
 		});
 
 		it('updates cohort students in place', async () => {
 			const put = await wrapped.run({
-				requestContext,
+				requestContext: adminRC,
 				path: `/api/graduates/${TEST_GRADUATE_YEAR_UPDATE}`,
 				method: 'PUT',
-				headers: bearerJsonHeaders(token),
+				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					year: TEST_GRADUATE_YEAR_UPDATE,
 					title: 'Updated title',

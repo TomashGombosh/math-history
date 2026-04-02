@@ -1,17 +1,16 @@
-import { adminToken, bearerJsonHeaders, jsonBody } from '@tests/helpers/http.js';
+import { withCognitoAdminAuthorizer, jsonBody } from '@tests/helpers/http.js';
 
 module.exports = (wrapped: any, expect: any, requestContext: any) =>
 	describe('PUT /api/teachers/:id', () => {
-		let token: string;
+		const adminRC = withCognitoAdminAuthorizer(requestContext);
 		let id: number;
 
 		beforeAll(async () => {
-			token = await adminToken(wrapped, requestContext, expect);
 			const create = await wrapped.run({
-				requestContext,
+				requestContext: adminRC,
 				path: '/api/teachers',
 				method: 'POST',
-				headers: bearerJsonHeaders(token),
+				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					name: `PutTarget ${Date.now().toString(36)}`,
 					title: 'Before',
@@ -23,10 +22,10 @@ module.exports = (wrapped: any, expect: any, requestContext: any) =>
 
 		it('updates fields on existing teacher', async () => {
 			const res = await wrapped.run({
-				requestContext,
+				requestContext: adminRC,
 				path: `/api/teachers/${id}`,
 				method: 'PUT',
-				headers: bearerJsonHeaders(token),
+				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ title: 'After update' }),
 			});
 			expect(res.statusCode).toBe(200);
