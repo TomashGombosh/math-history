@@ -1,0 +1,107 @@
+# Manual data migration: loads server_v2/migration/data/*.json into the app DynamoDB table.
+# Branch selects AWS target (same mapping as deploy.yml):
+#   development → GitHub environment "stage", table math-history-server-ddb-stage
+#   main        → GitHub environment "production", table math-history-server-ddb-prod
+#
+# Prerequisites: Terraform DynamoDB stack already applied for that environment.
+#
+# Per-environment secrets: AWS_DYNAMODB_ROLE_TO_ASSUME, AWS_ACCOUNT_ID
+# Variables: AWS_REGION (optional; default eu-north-1 in steps below)
+
+name: Migrate DynamoDB (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      migration:
+        description: Which seed to load
+        type: choice
+        options:
+          - all
+          - teachers
+          - graduates
+        default: all
+
+concurrency:
+  group: migrate-dynamodb-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  migrate:
+    name: Load migration data
+    runs-on: ubuntu-24.04
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'stage' }}
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'eu-north-1' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Resolve target (branch → DynamoDB)
+        id: target
+        run: |
+          set -euo pipefail
+          case "${GITHUB_REF}" in
+            refs/heads/main)
+              echo "tf_env=prod" >> "$GITHUB_OUTPUT"
+              echo "table_name=math-history-server-ddb-prod" >> "$GITHUB_OUTPUT"
+              ;;
+            refs/heads/development)
+              echo "tf_env=stage" >> "$GITHUB_OUTPUT"
+              echo "table_name=math-history-server-ddb-stage" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "This workflow must be run from branch development (stage) or main (prod). Current ref: ${GITHUB_REF}"
+              exit 1
+              ;;
+          esac
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DYNAMODB_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS account
+        env:
+          EXPECTED: ${{ secrets.AWS_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          ACTUAL=$(aws sts get-caller-identity --query Account --output text)
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "AWS account mismatch: expected ${EXPECTED}, got ${ACTUAL}"
+            exit 1
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        working-directory: server_v2
+        run: npm ci
+
+      - name: Load teachers seed
+        if: ${{ inputs.migration == 'all' || inputs.migration == 'teachers' }}
+        working-directory: server_v2
+        env:
+          AWS_REGION: ${{ env.AWS_REGION }}
+        run: |
+          node scripts/load-teachers-dynamodb.mjs \
+            migration/data/teachers-seed.json \
+            "${{ steps.target.outputs.table_name }}"
+
+      - name: Load graduates seed
+        if: ${{ inputs.migration == 'all' || inputs.migration == 'graduates' }}
+        working-directory: server_v2
+        env:
+          AWS_REGION: ${{ env.AWS_REGION }}
+        run: |
+          node scripts/load-graduates-dynamodb.mjs \
+            migration/data/graduates-seed.json \
+            "${{ steps.target.outputs.table_name }}"
