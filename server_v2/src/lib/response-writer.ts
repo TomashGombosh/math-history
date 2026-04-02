@@ -1,5 +1,5 @@
 import type { Response } from '@interfaces/types';
-import { FRONT, isTest } from '../config/consts';
+import { FRONT, isTest } from '@config/consts';
 
 const defaultHeaders = {
 	'Access-Control-Allow-Credentials': 'true',

@@ -24,6 +24,21 @@
         "paths": {
             "@interfaces/*": [
                 "./interfaces/*"
+            ],
+            "@config/*": [
+                "./config/*"
+            ],
+            "@lib/*": [
+                "./lib/*"
+            ],
+            "@models/*": [
+                "./models/*"
+            ],
+            "@services/*": [
+                "./services/*"
+            ],
+            "@tests/*": [
+                "./tests/*"
             ]
         }
     },

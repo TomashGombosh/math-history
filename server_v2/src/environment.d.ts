@@ -1,5 +1,5 @@
 // Pull env input shape from Zod schema
-import type { EnvInput } from './config/env';
+import type { EnvInput } from '@config/env';
 
 // Keys from the schema become allowed process.env keys
 type EnvKeys = keyof EnvInput;

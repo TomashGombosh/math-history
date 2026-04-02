@@ -11,6 +11,10 @@ dotenv.config();
 // Zod schema for env validation and defaults
 export const envSchema = z.object({
 	NODE_ENV: z.enum(['dev', 'stage', 'prod', 'test', 'local', 'development', 'production'] as const).default('dev'),
+	JWT_SECRET: z.string().default('dev_secret'),
+	JWT_EXPIRES_IN: z.string().default('8h'),
+	ADMIN_USERNAME: z.string().default('admin'),
+	ADMIN_PASSWORD: z.string().default('admin'),
 });
 
 // Input shape for process.env + secrets before parsing
@@ -35,6 +39,10 @@ export const getConfig = async (): Promise<AppConfig> => {
 	// Map validated env to app config shape
 	cachedConfig = {
 		nodeEnv: env.NODE_ENV as NodeEnv,
+		jwtSecret: env.JWT_SECRET,
+		jwtExpiresIn: env.JWT_EXPIRES_IN,
+		adminUsername: env.ADMIN_USERNAME,
+		adminPassword: env.ADMIN_PASSWORD,
 	};
 
 	return cachedConfig;

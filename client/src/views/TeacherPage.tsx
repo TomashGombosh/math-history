@@ -1,29 +1,52 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Seo } from "../lib/seo";
-import { findMockTeacherBySlug } from "../mocks/teachers";
+import { apiGet } from "../lib/api";
+import type { TeacherDto } from "../lib/apiTypes";
 import "./TeacherPage.css";
 
 type Teacher = {
   name: string;
-  imageUrl?: string;
-  title?: string;
-  academicDegree?: string;
-  position?: string;
-  faculty?: string;
-  shortInformation?: string;
-  bio?: string;
+  imageUrl?: string | null;
+  title?: string | null;
+  academicDegree?: string | null;
+  position?: string | null;
+  faculty?: string | null;
+  shortInformation?: string | null;
+  bio?: string | null;
 };
 
-export default function TeacherPage() {
-  const { slug = "" } = useParams();
+function TeacherProfile({ slug }: { slug: string }) {
   const [teacher, setTeacher] = useState<Teacher | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setTeacher(findMockTeacherBySlug(slug));
+    void apiGet<TeacherDto>(`/api/teachers/by-slug/${encodeURIComponent(slug)}`)
+      .then((t) => {
+        setTeacher({
+          name: t.name,
+          imageUrl: t.imageUrl,
+          title: t.title,
+          academicDegree: t.academicDegree,
+          position: t.position,
+          faculty: t.faculty,
+          shortInformation: t.shortInformation,
+          bio: t.bio,
+        });
+      })
+      .catch(() => {
+        setTeacher(null);
+      })
+      .finally(() => setLoading(false));
   }, [slug]);
 
-  if (!teacher) return <div className="teacher-page">Викладача не знайдено</div>;
+  if (loading) {
+    return <div className="teacher-page">Завантаження…</div>;
+  }
+
+  if (!teacher) {
+    return <div className="teacher-page">Викладача не знайдено</div>;
+  }
 
   return (
     <div className="teacher-page">
@@ -32,21 +55,31 @@ export default function TeacherPage() {
         <div className="photo">{teacher.imageUrl ? <img src={teacher.imageUrl} alt={teacher.name} /> : null}</div>
         <div className="info">
           <h1>{teacher.name}</h1>
-          <p>{teacher.academicDegree}</p>
-          <p>{teacher.position}</p>
+          <p>{teacher.academicDegree ?? ""}</p>
+          <p>{teacher.position ?? ""}</p>
         </div>
       </div>
       <section className="section">
         <h2>Коротка інформація</h2>
-        <p className="multiline">{teacher.shortInformation}</p>
+        <p className="multiline">{teacher.shortInformation ?? ""}</p>
       </section>
       <section className="section">
         <h2>Біографія</h2>
-        <p className="multiline">{teacher.bio}</p>
+        <p className="multiline">{teacher.bio ?? ""}</p>
       </section>
       <div className="back-link">
         <Link to="/teachers">← Повернутися до списку</Link>
       </div>
     </div>
   );
+}
+
+export default function TeacherPage() {
+  const { slug = "" } = useParams();
+
+  if (!slug) {
+    return <div className="teacher-page">Викладача не знайдено</div>;
+  }
+
+  return <TeacherProfile key={slug} slug={slug} />;
 }

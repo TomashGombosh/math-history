@@ -4,6 +4,17 @@
   padding: 24px 16px;
   background: #fff;
 }
+
+.page-intro {
+  margin-bottom: 16px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.graduates-year-empty {
+  margin-top: 16px;
+}
+
 .years-table {
   display: flex;
   flex-wrap: wrap;
@@ -14,13 +25,53 @@
   padding: 4px 10px;
   border: 1px solid #ccc;
   font-size: 12px;
+  text-decoration: none;
+  color: #000;
   background: #f9f9f9;
+}
+.year-cell:hover {
+  background: #e6f2f2;
 }
 .year-cell.active {
   background: #19a0a0;
   color: #fff;
   font-weight: bold;
 }
+
+.year-title {
+  margin-bottom: 16px;
+}
+
+.students-group {
+  margin-top: 24px;
+}
+
+.group-title {
+  margin-bottom: 8px;
+  font-size: 1.1rem;
+}
+
 .students-list {
   margin: 0 0 0 20px;
+  padding: 0;
+  column-count: 2;
+  column-gap: 40px;
+}
+
+.students-list li {
+  break-inside: avoid;
+  padding: 0 0 2px;
+  font-size: 14px;
+}
+
+.is-honors {
+  font-weight: bold;
+}
+
+@media (max-width: 768px) {
+  .students-list {
+    margin-left: 16px;
+    column-count: 1;
+    column-gap: 0;
+  }
 }

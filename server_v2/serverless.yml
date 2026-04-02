@@ -34,10 +34,31 @@ provider:
             - "s3:DeleteObject"
           Resource:
             - "arn:aws:s3:::${self:service}-data-${opt:stage, 'stage'}/*"
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:BatchGetItem
+            - dynamodb:BatchWriteItem
+            - dynamodb:TransactWriteItems
+          Resource:
+            - Fn::GetAtt: [MainTable, Arn]
+            - Fn::Join:
+                - ""
+                - - Fn::GetAtt: [MainTable, Arn]
+                  - "/index/*"
   stackTags:
     Name: "math-history-server"
   environment:
     NODE_ENV: ${env:NODE_ENV}
+    # Override via .env for serverless-offline + DynamoDB Local (see docker-compose dynamodb service)
+    DYNAMODB_TABLE_NAME: ${env:DYNAMODB_TABLE_NAME, '${self:service}-ddb-${sls:stage}'}
+    DYNAMODB_ENDPOINT: ${env:DYNAMODB_ENDPOINT, ''}
+    S3_DATA_BUCKET: ${self:service}-data-${sls:stage}
   vpc:
     securityGroupIds:
       - ${env:SECURITY_GROUP_ID}
@@ -48,20 +69,46 @@ functions:
   api:
     handler: .build/index.handler
     events:
-      # NOTE: You can set specific paths and methods as needed
-      - http:
+      - httpApi:
           path: /{proxy+}
-          method: any
+          method: "*"
+
+resources:
+  Resources:
+    MainTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-ddb-${sls:stage}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: pk
+            AttributeType: S
+          - AttributeName: sk
+            AttributeType: S
+          - AttributeName: gsi1pk
+            AttributeType: S
+          - AttributeName: gsi1sk
+            AttributeType: S
+        KeySchema:
+          - AttributeName: pk
+            KeyType: HASH
+          - AttributeName: sk
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: GSI1
+            KeySchema:
+              - AttributeName: gsi1pk
+                KeyType: HASH
+              - AttributeName: gsi1sk
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
 
 plugins:
   - serverless-plugin-resource-tagging
   - serverless-offline
-  - serverless-api-gateway-throttling
 
 custom:
   logRetentionInDays:
     prod: 90
     default: 7
-  apiGatewayThrottling:
-    maxRequestsPerSecond: ${env:RATE_LIMIT}
-    maxConcurrentRequests: ${env:BURST_LIMIT}
