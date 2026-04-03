@@ -23,6 +23,13 @@
 #     SECURITY_GROUP_ID, SUBNET_ID — Lambda VPC (required by server_v2/serverless.yml)
 #     CORS_ORIGIN — optional browser origin for API CORS
 #   Naming: Serverless --stage is stage (development branch) or prod (main), matching TF_VAR_environment.
+#
+# Client static site (same branch → environment as Serverless API):
+#   Creates private S3 bucket via client/serverless.yml (no website hosting; CloudFront in Terraform).
+#   After deploy, syncs client/dist to the bucket. IAM for the deploy role must allow s3:PutObject,
+#   s3:DeleteObject, s3:ListBucket on arn:aws:s3:::math-history-client-static-* (and objects).
+#   Per-environment secrets: AWS_SERVERLESS_ROLE_TO_ASSUME, AWS_ACCOUNT_ID, SERVERLESS_ACCESS_KEY (optional)
+#   Per-environment variables (recommended): VITE_API_URL, VITE_SITE_URL — baked into the Vite build
 
 name: Deploy application
 
@@ -201,3 +208,72 @@ jobs:
           CORS_ORIGIN: ${{ vars.CORS_ORIGIN }}
           SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
         run: npx serverless deploy --stage ${{ steps.target.outputs.tf_env }} --region ${{ env.AWS_REGION }}
+
+  deploy-client-static:
+    name: Deploy client (static site)
+    runs-on: ubuntu-24.04
+    needs: [deploy-dynamodb, deploy-cognito, deploy-s3-image-bucket]
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'stage' }}
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Resolve target environment
+        id: target
+        run: |
+          if [ "${GITHUB_REF}" = "refs/heads/main" ]; then
+            echo "tf_env=prod" >> "$GITHUB_OUTPUT"
+          else
+            echo "tf_env=stage" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_SERVERLESS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS account
+        env:
+          EXPECTED: ${{ secrets.AWS_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          ACTUAL=$(aws sts get-caller-identity --query Account --output text)
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "AWS account mismatch: expected ${EXPECTED}, got ${ACTUAL}"
+            exit 1
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build client
+        env:
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+          VITE_SITE_URL: ${{ vars.VITE_SITE_URL }}
+        run: npm run build
+
+      - name: Serverless deploy (S3 bucket stack)
+        env:
+          SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
+          STATIC_SITE_DOMAIN: ${{ vars.STATIC_SITE_DOMAIN }}
+        run: npx serverless deploy --stage ${{ steps.target.outputs.tf_env }} --region ${{ env.AWS_REGION }}
+
+      - name: Sync build to S3
+        env:
+          BUCKET: math-history-client-static-${{ steps.target.outputs.tf_env }}
+        run: |
+          set -euo pipefail
+          aws s3 sync dist/ "s3://${BUCKET}/" --delete --only-show-errors
