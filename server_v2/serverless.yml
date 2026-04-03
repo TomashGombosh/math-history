@@ -78,6 +78,8 @@ provider:
     S3_DATA_BUCKET: ${self:custom.s3DataBucket}
     S3_ENDPOINT: ${env:S3_ENDPOINT, ''}
     CORS_ORIGIN: ${env:CORS_ORIGIN, ''}
+    # Canonical public origin for sitemap links when API host is not the site host (no trailing slash)
+    SITE_URL: ${env:SITE_URL, ''}
 
 functions:
   api:
@@ -86,6 +88,9 @@ functions:
       # Public routes (no JWT at the gateway — same as publicResource in code)
       - httpApi:
           path: /api/openapi
+          method: GET
+      - httpApi:
+          path: /sitemap.xml
           method: GET
       - httpApi:
           path: /api/teachers

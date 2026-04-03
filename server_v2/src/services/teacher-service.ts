@@ -266,6 +266,14 @@ export async function getTeacherFilters(): Promise<{ positions: string[]; degree
 	};
 }
 
+/** Slugs for public teacher profile URLs (`/teacher/:slug`). */
+export async function listTeacherSlugsForSitemap(): Promise<Array<{ slug: string }>> {
+	const rows = await queryAllTeacherItems();
+	return rows
+		.filter((t) => t.slug && String(t.slug).trim())
+		.map((t) => ({ slug: String(t.slug).trim() }));
+}
+
 export async function getTeacherMetaAdmin(): Promise<{ positions: string[]; degrees: string[] }> {
 	const rows = await queryAllTeacherItems();
 	const positionsSet = new Set<string>();

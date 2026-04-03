@@ -20,6 +20,10 @@ export function resolveModulePath(
 		return { modulePath: 'openapi/get', pathParams: {} };
 	}
 
+	if (joined === 'sitemap.xml' && m === 'get') {
+		return { modulePath: 'sitemap.xml/get', pathParams: {} };
+	}
+
 	const bySlug = /^api\/teachers\/by-slug\/([^/]+)$/.exec(joined);
 	if (bySlug && m === 'get') {
 		return { modulePath: 'api/teachers/by-slug/_slug/get', pathParams: { slug: bySlug[1] } };
