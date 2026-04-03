@@ -23,6 +23,7 @@ const PUBLIC_DESCRIPTION = `
 | GET | /api/graduates/specialties | Distinct student specialties |
 | GET | /api/graduates/{year} | Single year cohort (merged view) |
 | GET | /api/layout | Public layout / field visibility config |
+| GET | /sitemap.xml | Dynamic XML sitemap (teachers, graduates, static pages) |
 
 All other routes under \`/api/*\` require authentication unless otherwise noted.
 `.trim();
@@ -53,6 +54,19 @@ export const handler = async (ctx: Engine) => {
 			},
 		},
 		paths: {
+			'/sitemap.xml': {
+				get: {
+					tags: ['Public'],
+					summary: 'XML sitemap',
+					description: 'Search-engine sitemap for public pages (`/`, `/teachers`, `/teacher/{slug}`, `/graduates`, `/graduates/{year}`).',
+					security: [],
+					responses: {
+						200: {
+							description: 'application/xml sitemap',
+						},
+					},
+				},
+			},
 			'/openapi': {
 				get: {
 					tags: ['Public'],

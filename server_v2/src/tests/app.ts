@@ -38,6 +38,7 @@ describe('api', () => {
 	const tests =
 		process.env.TESTS?.split(',').map((v) => v.trim()) ||
 		([
+			'sitemap.xml/get',
 			'api/layout/get',
 			'api/layout/put',
 			'api/teachers/filters/get',

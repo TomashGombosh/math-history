@@ -38,6 +38,8 @@ export const envSchema = z
 		S3_DATA_BUCKET: optionalTrimmed(),
 		S3_ENDPOINT: optionalTrimmed(),
 		CORS_ORIGIN: optionalTrimmed(),
+		/** Public canonical site URL for sitemap `<loc>` when `Host` is the API execute-api domain. No trailing slash. */
+		SITE_URL: optionalTrimmed(),
 	})
 	.superRefine((data, ctx) => {
 		const usesLocalDynamo = Boolean(data.DYNAMODB_ENDPOINT);

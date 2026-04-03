@@ -150,6 +150,30 @@ export async function getGraduateYearDetail(yearNum: number): Promise<{
 	};
 }
 
+/** Distinct graduation years with optional `lastmod` (YYYY-MM-DD) from cohort `updatedAt`. */
+export async function listGraduateYearsForSitemap(
+	correlation?: CorrelationIds,
+): Promise<Array<{ year: number; lastmod?: string }>> {
+	const rows = await queryAllGraduateItems(correlation);
+	const maxUpdatedByYear = new Map<number, string>();
+	for (const g of rows) {
+		const raw = g.updatedAt;
+		if (typeof raw !== 'string' || !raw.trim()) continue;
+		const prev = maxUpdatedByYear.get(g.year);
+		if (!prev || raw > prev) {
+			maxUpdatedByYear.set(g.year, raw);
+		}
+	}
+	const years = [...new Set(rows.map((r) => r.year))].sort((a, b) => a - b);
+	return years.map((year) => {
+		const iso = maxUpdatedByYear.get(year);
+		return {
+			year,
+			lastmod: iso ? iso.split('T')[0] : undefined,
+		};
+	});
+}
+
 export async function getYearsSummary(
 	correlation?: CorrelationIds,
 ): Promise<
