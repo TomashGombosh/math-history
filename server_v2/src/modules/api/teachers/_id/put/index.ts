@@ -1,5 +1,6 @@
 import type { Engine } from '@interfaces/types';
 import { deleteImageFiles } from '@lib/image-s3';
+import { logException } from '@lib/lambda-log';
 import { ResponseWriter } from '@lib/response-writer';
 import { updateTeacher } from '@services/teacher-service';
 
@@ -19,7 +20,7 @@ export const handler = async (ctx: Engine) => {
 		if (msg === 'NOT_FOUND') {
 			return ResponseWriter.NotFound({ message: 'Teacher not found' });
 		}
-		console.error(e);
+		logException('teacher:update_failed', e, ctx.correlationIds);
 		return ResponseWriter.InternalServerError({ message: 'Error updating teacher' });
 	}
 };

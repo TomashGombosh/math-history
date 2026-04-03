@@ -78,11 +78,6 @@ provider:
     S3_DATA_BUCKET: ${self:custom.s3DataBucket}
     S3_ENDPOINT: ${env:S3_ENDPOINT, ''}
     CORS_ORIGIN: ${env:CORS_ORIGIN, ''}
-  vpc:
-    securityGroupIds:
-      - ${env:SECURITY_GROUP_ID}
-    subnetIds:
-      - ${env:SUBNET_ID}
 
 functions:
   api:

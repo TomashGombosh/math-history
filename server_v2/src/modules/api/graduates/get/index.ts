@@ -8,6 +8,6 @@ export const handler = async (ctx: Engine) => {
 	const yearRaw = ctx.req.params.year;
 	const parsed = yearRaw !== undefined && yearRaw !== '' ? Number(yearRaw) : null;
 	const yearFilter = parsed !== null && !Number.isNaN(parsed) ? parsed : null;
-	const rows = await listGraduateRows(yearFilter);
+	const rows = await listGraduateRows(yearFilter, ctx.correlationIds);
 	return ResponseWriter.Success(rows.map(graduateToJson));
 };

@@ -1,5 +1,6 @@
 import type { AppConfig } from '@config/types';
 import type * as consts from '@config/consts';
+import type { CorrelationIds } from '@lib/lambda-log';
 
 export interface StringDict {
 	[key: string]: string;
@@ -41,6 +42,8 @@ export interface Engine {
 	config: AppConfig;
 	user: User;
 	lambdaEvent: unknown;
+	/** Set by HTTP handler for structured logs + correlation (Lambda + API Gateway ids). */
+	correlationIds: CorrelationIds;
 }
 
 export interface User {

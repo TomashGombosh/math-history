@@ -1,4 +1,5 @@
 import type { Engine } from '@interfaces/types';
+import { logException } from '@lib/lambda-log';
 import { ResponseWriter } from '@lib/response-writer';
 import { createPresignedImageUpload } from '@services/upload-service';
 
@@ -11,7 +12,7 @@ export const handler = async (ctx: Engine) => {
 		if (msg === 'UNSUPPORTED_MEDIA_TYPE') {
 			return ResponseWriter.UnsupportedMediaType({ message: 'Непідтримуваний формат зображення' });
 		}
-		console.error(e);
+		logException('upload:presign_failed', e, ctx.correlationIds);
 		return ResponseWriter.InternalServerError({ message: 'Could not create upload URL' });
 	}
 };

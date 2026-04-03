@@ -1,4 +1,5 @@
 import { DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { logException } from '@lib/lambda-log';
 import { getS3BucketName, getS3Client } from './s3-client';
 
 function basenameFromUrl(imageUrl: string): string {
@@ -50,7 +51,7 @@ export async function deleteImageFiles(imageUrl: string | null | undefined): Pro
 				)
 				.catch((e: { name?: string }) => {
 					if (e?.name !== 'NotFound' && e?.name !== 'NoSuchKey') {
-						console.error('S3 delete error', Key, e);
+						logException('s3:deleteObject_failed', e, { s3Key: Key });
 					}
 				}),
 		),

@@ -1,4 +1,5 @@
 import type { Engine } from '@interfaces/types';
+import { logException } from '@lib/lambda-log';
 import { ResponseWriter } from '@lib/response-writer';
 import { createGraduate } from '@services/graduate-service';
 
@@ -17,7 +18,7 @@ export const handler = async (ctx: Engine) => {
 		if (msg === 'YEAR_EXISTS') {
 			return ResponseWriter.Conflict({ message: 'Випуск за цей рік уже існує' });
 		}
-		console.error(e);
+		logException('graduate:create_failed', e, ctx.correlationIds);
 		return ResponseWriter.InternalServerError({ message: 'Error creating graduate' });
 	}
 };

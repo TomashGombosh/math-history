@@ -4,7 +4,7 @@ import { getSpecialties } from '@services/graduate-service';
 
 export const publicResource = true;
 
-export const handler = async (_ctx: Engine) => {
-	const rows = await getSpecialties();
+export const handler = async (ctx: Engine) => {
+	const rows = await getSpecialties(ctx.correlationIds);
 	return ResponseWriter.Success(rows);
 };

@@ -1,4 +1,5 @@
 import { PK, graduateSortKey } from '@lib/dynamo-keys';
+import { logInfo, type CorrelationIds } from '@lib/lambda-log';
 import { deleteItem, getItem, putItem, queryItems } from '@lib/dynamo-operations';
 import type { GraduateCreateBody } from '@models/graduate';
 import { nextGraduateCohortId } from '@services/counters';
@@ -19,10 +20,20 @@ export interface GraduateItem extends Record<string, unknown> {
 	updatedAt?: string;
 }
 
-async function queryAllGraduateItems(): Promise<GraduateItem[]> {
+async function queryAllGraduateItems(correlation?: CorrelationIds): Promise<GraduateItem[]> {
+	const t0 = Date.now();
+	const base = { ...correlation, service: 'math-history-server' as const };
+	logInfo('graduate:queryAll:start', {
+		...base,
+		dynamoTable: process.env.DYNAMODB_TABLE_NAME ?? 'unset',
+		durationMs: 0,
+	});
 	const out: GraduateItem[] = [];
 	let exclusiveStartKey: Record<string, unknown> | undefined;
+	let page = 0;
 	do {
+		const pageStart = Date.now();
+		page += 1;
 		const { items, lastEvaluatedKey } = await queryItems<GraduateItem>({
 			KeyConditionExpression: 'pk = :pk AND begins_with(sk, :pfx)',
 			ExpressionAttributeValues: {
@@ -31,14 +42,31 @@ async function queryAllGraduateItems(): Promise<GraduateItem[]> {
 			},
 			ExclusiveStartKey: exclusiveStartKey,
 		});
+		logInfo('graduate:queryAll:page', {
+			...base,
+			page,
+			itemCount: items.length,
+			hasMore: Boolean(lastEvaluatedKey),
+			pageDurationMs: Date.now() - pageStart,
+			durationMs: Date.now() - t0,
+		});
 		out.push(...items);
 		exclusiveStartKey = lastEvaluatedKey;
 	} while (exclusiveStartKey);
+	logInfo('graduate:queryAll:done', {
+		...base,
+		totalItems: out.length,
+		pages: page,
+		durationMs: Date.now() - t0,
+	});
 	return out;
 }
 
-export async function listGraduateRows(yearFilter: number | null): Promise<GraduateItem[]> {
-	const all = await queryAllGraduateItems();
+export async function listGraduateRows(
+	yearFilter: number | null,
+	correlation?: CorrelationIds,
+): Promise<GraduateItem[]> {
+	const all = await queryAllGraduateItems(correlation);
 	let rows = all;
 	if (yearFilter && !Number.isNaN(yearFilter)) {
 		rows = all.filter((g) => g.year === yearFilter);
@@ -122,7 +150,9 @@ export async function getGraduateYearDetail(yearNum: number): Promise<{
 	};
 }
 
-export async function getYearsSummary(): Promise<
+export async function getYearsSummary(
+	correlation?: CorrelationIds,
+): Promise<
 	Array<{
 		year: number;
 		totalStudents: number;
@@ -130,7 +160,7 @@ export async function getYearsSummary(): Promise<
 		cohortsCount: number;
 	}>
 > {
-	const rows = await queryAllGraduateItems();
+	const rows = await queryAllGraduateItems(correlation);
 	const byYear = new Map<number, { totalStudents: number; totalWithHonours: number; cohortsCount: number }>();
 
 	for (const g of rows) {
@@ -151,8 +181,8 @@ export async function getYearsSummary(): Promise<
 		}));
 }
 
-export async function getSpecialties(): Promise<string[]> {
-	const rows = await queryAllGraduateItems();
+export async function getSpecialties(correlation?: CorrelationIds): Promise<string[]> {
+	const rows = await queryAllGraduateItems(correlation);
 	const set = new Set<string>();
 	for (const g of rows) {
 		const list = Array.isArray(g.students) ? g.students : [];

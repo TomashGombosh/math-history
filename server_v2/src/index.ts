@@ -1,3 +1,4 @@
+import type { Context } from 'aws-lambda';
 import type { AnyDict, Engine, IRequest, User } from '@interfaces/types';
 import * as fs from 'fs';
 import type z from 'zod';
@@ -5,6 +6,7 @@ import type { AppConfig } from '@config/types';
 import getConfig from '@config/env';
 import * as consts from '@config/consts';
 import { assertAuthenticatedRequest } from '@lib/admin-auth';
+import { correlationFromLambda, logInfo, logWarn } from '@lib/lambda-log';
 import { ResponseWriter } from '@lib/response-writer';
 import { normalizeApiSegments, resolveModulePath } from '@lib/route-resolve';
 
@@ -24,8 +26,28 @@ function getHeader(headers: Record<string, string | undefined> | undefined, name
 }
 
 let appConfig: AppConfig | null = null;
+let firstInvocationInContainer = true;
 
-export const handler = async (event: any) => {
+export const handler = async (event: any, context: Context) => {
+	const t0 = Date.now();
+	const correlationIds = correlationFromLambda(event, context);
+	const coldStart = firstInvocationInContainer;
+	firstInvocationInContainer = false;
+
+	const trace = (msg: string, extra?: Record<string, unknown>) => {
+		logInfo(msg, {
+			...correlationIds,
+			route: extra?.route as string | undefined,
+			durationMs: Date.now() - t0,
+			coldStart,
+			service: 'math-history-server',
+			...extra,
+		});
+	};
+
+	const routeEarly = String(event.rawPath ?? event.path ?? '').split('?')[0];
+	trace('handler:entry', { route: routeEarly });
+
 	const rawMethod = String(event.requestContext?.http?.method ?? event.httpMethod ?? event.method ?? 'GET');
 	if (rawMethod === 'OPTIONS') {
 		return ResponseWriter.Success('');
@@ -73,10 +95,12 @@ export const handler = async (event: any) => {
 	const resolved = resolveModulePath(normalizedSegments, method);
 
 	if (!resolved) {
+		trace('handler:invalidPath', { route: pathOnly, segments: normalizedSegments.join('/') });
 		return ResponseWriter.BadRequest({ message: 'Invalid path' });
 	}
 
 	const { modulePath, pathParams } = resolved;
+	trace('handler:resolved', { route: pathOnly, modulePath });
 	req.params = { ...req.params, ...pathParams };
 
 	const queryString = rawPath.includes('?') ? rawPath.split('?')[1] : '';
@@ -84,7 +108,9 @@ export const handler = async (event: any) => {
 		req.params = { ...req.params, ...Object.fromEntries(new URLSearchParams(queryString)) };
 	}
 
+	trace('handler:beforeGetConfig', { route: pathOnly, modulePath });
 	appConfig = appConfig || (await getConfig());
+	trace('handler:afterGetConfig', { route: pathOnly, modulePath });
 
 	const ctx: Engine = {
 		req,
@@ -92,40 +118,66 @@ export const handler = async (event: any) => {
 		config: appConfig,
 		user: {} as User,
 		lambdaEvent: event,
+		correlationIds,
 	};
 
-	if (consts.isProduction) {
-		console.info('>> Request', {
-			path: rawPath,
-			modulePath,
-			moduleLoaded: Boolean(modules[modulePath]),
-			request: req,
-		});
-	} else {
-		console.info('>> Event', event);
-	}
+	logInfo('request:summary', {
+		...correlationIds,
+		route: pathOnly,
+		method,
+		modulePath,
+		moduleCached: Boolean(modules[modulePath]),
+		coldStart,
+		hasBody: typeof event.body === 'string' && event.body.length > 0,
+		durationMs: Date.now() - t0,
+		service: 'math-history-server',
+	});
 
 	if (!modules[modulePath]) {
 		const moduleFsPath = `./modules/${modulePath}`;
 
 		if (!fs.existsSync(`${__dirname}/${moduleFsPath}/index.js`)) {
-			console.warn(`>> Not found: ${cleanDirname}/${moduleFsPath}/index.ts`);
+			logWarn('module:not_found', {
+				...correlationIds,
+				route: pathOnly,
+				moduleFsPath: `${cleanDirname}/${moduleFsPath}/index.ts`,
+				durationMs: Date.now() - t0,
+				service: 'math-history-server',
+			});
 			return ResponseWriter.NotFound();
 		}
 
+		trace('handler:beforeImportSchema', { route: pathOnly, moduleFsPath });
 		if (fs.existsSync(`${__dirname}/${moduleFsPath}/schema.js`)) {
 			schemas[modulePath] = await import(`${moduleFsPath}/schema.js`);
 		} else {
-			console.warn(`>> Not found: ${cleanDirname}/${moduleFsPath}/schema.ts`);
+			logWarn('module:schema_missing', {
+				...correlationIds,
+				route: pathOnly,
+				moduleFsPath: `${cleanDirname}/${moduleFsPath}/schema.ts`,
+				durationMs: Date.now() - t0,
+				service: 'math-history-server',
+			});
 			return ResponseWriter.NotFound();
 		}
+		trace('handler:afterImportSchema', { route: pathOnly, moduleFsPath });
 
+		trace('handler:beforeImportModule', { route: pathOnly, moduleFsPath });
 		modules[modulePath] = await import(moduleFsPath);
+		trace('handler:afterImportModule', { route: pathOnly, moduleFsPath });
+	} else {
+		trace('handler:moduleCacheHit', { route: pathOnly, modulePath });
 	}
 
 	const mod = modules[modulePath];
 	if (typeof mod?.handler !== 'function') {
-		console.warn(`>> Not found: ${cleanDirname}/${modulePath}/index.ts`);
+		logWarn('module:handler_missing', {
+			...correlationIds,
+			route: pathOnly,
+			modulePath: `${cleanDirname}/${modulePath}/index.ts`,
+			durationMs: Date.now() - t0,
+			service: 'math-history-server',
+		});
 		return ResponseWriter.NotFound();
 	}
 
@@ -151,5 +203,8 @@ export const handler = async (event: any) => {
 		}
 	}
 
-	return mod.handler(ctx);
+	trace('handler:beforeModuleHandler', { route: pathOnly, modulePath });
+	const out = await mod.handler(ctx);
+	trace('handler:afterModuleHandler', { route: pathOnly, modulePath });
+	return out;
 };

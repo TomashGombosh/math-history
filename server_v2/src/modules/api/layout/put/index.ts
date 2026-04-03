@@ -1,4 +1,5 @@
 import type { Engine } from '@interfaces/types';
+import { logException } from '@lib/lambda-log';
 import { ResponseWriter } from '@lib/response-writer';
 import { saveLayoutConfig } from '@services/layout-service';
 
@@ -10,8 +11,8 @@ export const handler = async (ctx: Engine) => {
 	try {
 		await saveLayoutConfig(body);
 		return ResponseWriter.Success({ ok: true });
-	} catch (e) {
-		console.error('Write layout config error:', e);
+	} catch (e: unknown) {
+		logException('layout:put_failed', e, ctx.correlationIds);
 		return ResponseWriter.InternalServerError({ message: 'Cannot save layout config' });
 	}
 };
