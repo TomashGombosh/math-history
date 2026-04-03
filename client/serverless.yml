@@ -1,0 +1,84 @@
+# Private S3 bucket for the Vite/React SPA build output. No static website hosting:
+# CloudFront (Terraform) will use OAC and point at this bucket origin.
+# Wire bucket policy + OAC + distribution in Terraform using outputs below.
+# Same org as server_v2 when using Serverless Dashboard / license (set in CI via SERVERLESS_ACCESS_KEY).
+org: afjsolution
+service: math-history-client-static
+frameworkVersion: "4"
+
+stages:
+  default:
+    params:
+      # Optional: canonical hostname Terraform uses for CloudFront aliases (not used by this stack).
+      domain: ${env:STATIC_SITE_DOMAIN, ''}
+  stage:
+    params:
+      domain: ${env:STATIC_SITE_DOMAIN, ''}
+  prod:
+    params:
+      domain: ${env:STATIC_SITE_DOMAIN, ''}
+
+custom:
+  # Single source of truth for bucket name (CI sync + Terraform data sources).
+  staticBucketName: math-history-client-static-${sls:stage}
+
+provider:
+  name: aws
+  region: ${opt:region, 'eu-north-1'}
+  stage: ${opt:stage, 'stage'}
+  stackTags:
+    Project: math-history
+    Component: client-static
+
+package:
+  patterns:
+    - "!**"
+
+plugins:
+  - serverless-plugin-resource-tagging
+
+resources:
+  Resources:
+    StaticSiteBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:custom.staticBucketName}
+        BucketEncryption:
+          ServerSideEncryptionConfiguration:
+            - ServerSideEncryptionByDefault:
+                SSEAlgorithm: AES256
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: true
+          BlockPublicPolicy: true
+          IgnorePublicAcls: true
+          RestrictPublicBuckets: true
+        OwnershipControls:
+          Rules:
+            - ObjectOwnership: BucketOwnerEnforced
+        Tags:
+          - Key: Name
+            Value: ${self:custom.staticBucketName}
+
+  Outputs:
+    StaticSiteBucketName:
+      Description: Deploy Vite build here; attach CloudFront OAC + bucket policy in Terraform
+      Value:
+        Ref: StaticSiteBucket
+      Export:
+        Name: ${self:service}-${sls:stage}-StaticSiteBucketName
+    StaticSiteBucketArn:
+      Description: Bucket ARN for IAM / Terraform
+      Value:
+        Fn::GetAtt:
+          - StaticSiteBucket
+          - Arn
+      Export:
+        Name: ${self:service}-${sls:stage}-StaticSiteBucketArn
+    StaticSiteBucketDomainName:
+      Description: Regional domain for S3 origin (CloudFront origin domain)
+      Value:
+        Fn::GetAtt:
+          - StaticSiteBucket
+          - RegionalDomainName
+      Export:
+        Name: ${self:service}-${sls:stage}-StaticSiteBucketDomainName

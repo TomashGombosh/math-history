@@ -13,6 +13,9 @@ node_modules
 logs
 *.log
 
+# Serverless Framework
+.serverless/
+
 # Misc
 .DS_Store
 .fleet
