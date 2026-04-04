@@ -5,9 +5,19 @@ function escapeXml(text: string): string {
 	return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+function headerCi(headers: Record<string, string | undefined>, name: string): string | undefined {
+	const want = name.toLowerCase();
+	for (const [k, v] of Object.entries(headers)) {
+		if (k.toLowerCase() === want && typeof v === 'string' && v.trim() !== '') {
+			return v.trim();
+		}
+	}
+	return undefined;
+}
+
 /**
- * Canonical public site origin for `<loc>` URLs. Prefer `SITE_URL` when set (deploy),
- * else `X-Forwarded-*` / `Host` from API Gateway or CloudFront.
+ * Canonical public site origin for `<loc>` URLs. Order: `SITE_URL` (deploy),
+ * CloudFront origin custom header `X-Public-Site-Base`, then `X-Forwarded-Host` / `Host`.
  */
 export function resolvePublicSiteBase(headers: Record<string, string | undefined>): string {
 	const fromEnv = process.env.SITE_URL?.trim();
@@ -15,9 +25,20 @@ export function resolvePublicSiteBase(headers: Record<string, string | undefined
 		return fromEnv.replace(/\/$/, '');
 	}
 
+	const fromCf = headerCi(headers, 'x-public-site-base');
+	if (fromCf) {
+		try {
+			const u = new URL(fromCf);
+			if (u.protocol === 'http:' || u.protocol === 'https:') {
+				return `${u.protocol}//${u.host}`;
+			}
+		} catch {
+			/* ignore */
+		}
+	}
+
 	const hostRaw =
-		headers['x-forwarded-host'] ??
-		headers['X-Forwarded-Host'] ??
+		headerCi(headers, 'x-forwarded-host') ??
 		headers.host ??
 		headers.Host;
 	const host = typeof hostRaw === 'string' ? hostRaw.split(',')[0].trim() : '';
@@ -25,7 +46,7 @@ export function resolvePublicSiteBase(headers: Record<string, string | undefined
 		return 'http://localhost:5173';
 	}
 
-	const protoRaw = headers['x-forwarded-proto'] ?? headers['X-Forwarded-Proto'] ?? 'https';
+	const protoRaw = headerCi(headers, 'x-forwarded-proto') ?? 'https';
 	const proto = String(protoRaw).split(',')[0].trim().toLowerCase();
 	const safeProto = proto === 'http' || proto === 'https' ? proto : 'https';
 	return `${safeProto}://${host}`;

@@ -22,6 +22,8 @@
 #     COGNITO_JWT_ISSUER, COGNITO_JWT_AUDIENCE — HTTP API JWT authorizer (match Terraform Cognito outputs)
 #     SECURITY_GROUP_ID, SUBNET_ID — Lambda VPC (required by server_v2/serverless.yml)
 #     CORS_ORIGIN — optional browser origin for API CORS
+#     SITE_URL — same canonical public origin as VITE_SITE_URL (https://CLOUDFRONT_ALIAS, no trailing slash).
+#       Required for correct sitemap <loc> when CloudFront uses AllViewerExceptHostHeader (Host at Lambda is execute-api).
 #   Naming: Serverless --stage is stage (development branch) or prod (main), matching TF_VAR_environment.
 #
 # Client static site (same branch → environment as Serverless API):
@@ -215,6 +217,7 @@ jobs:
           SECURITY_GROUP_ID: ${{ vars.SECURITY_GROUP_ID }}
           SUBNET_ID: ${{ vars.SUBNET_ID }}
           CORS_ORIGIN: ${{ vars.CORS_ORIGIN }}
+          SITE_URL: ${{ vars.VITE_SITE_URL }}
           SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
         run: npx serverless deploy --stage ${{ steps.target.outputs.tf_env }} --region ${{ env.AWS_REGION }}
 

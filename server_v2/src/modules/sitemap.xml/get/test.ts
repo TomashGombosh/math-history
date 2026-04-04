@@ -20,4 +20,21 @@ module.exports = (wrapped: any, expect: any, requestContext: any) =>
 			expect(body).toContain('<loc>https://example.com/teachers</loc>');
 			expect(body).toContain('<loc>https://example.com/graduates</loc>');
 		});
+
+		it('prefers X-Public-Site-Base over execute-api Host (CloudFront + AllViewerExceptHostHeader)', async () => {
+			const res = await wrapped.run({
+				requestContext,
+				path: '/sitemap.xml',
+				method: 'GET',
+				headers: {
+					host: 'abc.execute-api.eu-north-1.amazonaws.com',
+					'x-forwarded-proto': 'https',
+					'x-public-site-base': 'https://math-history.example.org',
+				},
+			});
+			expect(res.statusCode).toBe(200);
+			const body = String(res.body ?? '');
+			expect(body).toContain('<loc>https://math-history.example.org/</loc>');
+			expect(body).not.toContain('execute-api.eu-north-1.amazonaws.com');
+		});
 	});

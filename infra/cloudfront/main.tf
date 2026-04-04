@@ -48,6 +48,12 @@ resource "aws_cloudfront_distribution" "site" {
     domain_name = var.api_gateway_domain_name
     origin_id   = "http-api"
 
+    # Lambda sees execute-api Host (AllViewerExceptHostHeader). Sitemap/OpenAPI need the viewer-facing origin.
+    custom_header {
+      name  = "X-Public-Site-Base"
+      value = "https://${var.cloudfront_alias}"
+    }
+
     custom_origin_config {
       http_port              = 80
       https_port             = 443

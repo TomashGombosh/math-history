@@ -1,28 +1,30 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Seo } from "../lib/seo";
 import { apiGet } from "../lib/api";
-import type { TeacherDto } from "../lib/apiTypes";
+import type { LayoutConfigResponse, TeacherDto } from "../lib/apiTypes";
+import {
+  normalizeTeacherPageLayout,
+  parsePublicationEntry,
+  teacherHasSectionContent,
+  type TeacherPageState,
+} from "../lib/teacherPageLayout";
 import "./TeacherPage.css";
 
-type Teacher = {
-  name: string;
-  imageUrl?: string | null;
-  title?: string | null;
-  academicDegree?: string | null;
-  position?: string | null;
-  faculty?: string | null;
-  shortInformation?: string | null;
-  bio?: string | null;
-};
-
 function TeacherProfile({ slug }: { slug: string }) {
-  const [teacher, setTeacher] = useState<Teacher | null>(null);
+  const [teacher, setTeacher] = useState<TeacherPageState | null>(null);
+  const [layout, setLayout] = useState<LayoutConfigResponse>(() => normalizeTeacherPageLayout({}));
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    void apiGet<TeacherDto>(`/api/teachers/by-slug/${encodeURIComponent(slug)}`)
-      .then((t) => {
+    let cancelled = false;
+    setLoading(true);
+    void Promise.all([
+      apiGet<TeacherDto>(`/api/teachers/by-slug/${encodeURIComponent(slug)}`),
+      apiGet<LayoutConfigResponse>("/api/layout").catch(() => ({})),
+    ])
+      .then(([t, rawLayout]) => {
+        if (cancelled) return;
         setTeacher({
           name: t.name,
           imageUrl: t.imageUrl,
@@ -32,13 +34,25 @@ function TeacherProfile({ slug }: { slug: string }) {
           faculty: t.faculty,
           shortInformation: t.shortInformation,
           bio: t.bio,
+          publications: Array.isArray(t.publications) ? t.publications : [],
         });
+        setLayout(normalizeTeacherPageLayout(rawLayout));
       })
       .catch(() => {
-        setTeacher(null);
+        if (!cancelled) setTeacher(null);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [slug]);
+
+  const sortedSections = useMemo(
+    () => (layout.sections ?? []).filter((s) => !!s),
+    [layout.sections],
+  );
 
   if (loading) {
     return <div className="teacher-page">Завантаження…</div>;
@@ -59,14 +73,44 @@ function TeacherProfile({ slug }: { slug: string }) {
           <p>{teacher.position ?? ""}</p>
         </div>
       </div>
-      <section className="section">
-        <h2>Коротка інформація</h2>
-        <p className="multiline">{teacher.shortInformation ?? ""}</p>
-      </section>
-      <section className="section">
-        <h2>Біографія</h2>
-        <p className="multiline">{teacher.bio ?? ""}</p>
-      </section>
+      {sortedSections.map((sec) => {
+        if (!sec.visible || !teacherHasSectionContent(teacher, sec.id)) return null;
+        if (sec.id === "shortInformation") {
+          return (
+            <section key={sec.id} className="section">
+              <h2>{sec.title}</h2>
+              <p className="multiline">{teacher.shortInformation ?? ""}</p>
+            </section>
+          );
+        }
+        if (sec.id === "bio") {
+          return (
+            <section key={sec.id} className="section">
+              <h2>{sec.title}</h2>
+              <p className="multiline">{teacher.bio ?? ""}</p>
+            </section>
+          );
+        }
+        if (sec.id === "publications") {
+          const pubs = teacher.publications
+            .map((raw, i) => parsePublicationEntry(raw, i))
+            .filter((p): p is NonNullable<typeof p> => p != null);
+          return (
+            <section key={sec.id} className="section">
+              <h2>{sec.title}</h2>
+              <ol className="pub-list">
+                {pubs.map((pub) => (
+                  <li key={pub.key}>
+                    {pub.year != null && pub.year !== "" ? <span>({pub.year}) </span> : null}
+                    {pub.text}
+                  </li>
+                ))}
+              </ol>
+            </section>
+          );
+        }
+        return null;
+      })}
       <div className="back-link">
         <Link to="/teachers">← Повернутися до списку</Link>
       </div>
