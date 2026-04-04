@@ -48,3 +48,9 @@ variable "s3_bucket_name" {
   default     = ""
   description = "Override static bucket name; leave empty for math-history-client-static-<environment>."
 }
+
+variable "s3_data_bucket_name" {
+  type        = string
+  default     = ""
+  description = "Override uploads/data bucket for /images/*; leave empty for math-history-server-data-<environment>."
+}

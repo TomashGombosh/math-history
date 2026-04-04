@@ -33,10 +33,17 @@ export type GraduateYearSummary = {
   cohortsCount: number;
 };
 
+export type GraduateCohortImage = {
+  id?: number;
+  url?: string;
+  caption?: string | null;
+  specialty?: string | null;
+};
+
 export type GraduateYearDetail = {
   year: number;
   title: string;
-  images: unknown[];
+  images: GraduateCohortImage[];
   students: Array<{
     id: number;
     index: number;

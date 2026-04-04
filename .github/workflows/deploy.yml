@@ -32,6 +32,7 @@
 #   s3:DeleteObject, s3:ListBucket on arn:aws:s3:::math-history-client-static-* (and objects).
 #   Per-environment secrets: AWS_SERVERLESS_ROLE_TO_ASSUME, AWS_ACCOUNT_ID, SERVERLESS_ACCESS_KEY (optional)
 #   Per-environment variables (recommended): VITE_API_URL, VITE_SITE_URL — baked into the Vite build
+#   After build, CI writes dist/robots.txt: stage = Disallow: /; prod = Allow public + Sitemap from VITE_SITE_URL
 #
 # CloudFront (Terraform, after Serverless API + client bucket/sync):
 #   Per-environment secret: AWS_CLOUDFRONT_ROLE_TO_ASSUME — OIDC role with CloudFront + S3 bucket policy
@@ -39,8 +40,8 @@
 #     ACM_CERTIFICATE_ARN — ACM cert in us-east-1 covering CLOUDFRONT_ALIAS (SNI for CloudFront)
 #     HTTP_API_EXECUTE_API_DOMAIN — HTTP API hostname only, e.g. abc.execute-api.eu-north-1.amazonaws.com
 #     CLOUDFRONT_ALIAS — alternate domain (production: math-history.afj-solution.com; stage: math-history-stage.afj-solution.com)
-#   Optional variable: CLOUDFRONT_S3_BUCKET — overrides default math-history-client-static-<stage|prod>
-#   Behaviors: /api/* and /sitemap.xml → API origin; default → S3 SPA (index.html + 403/404 → index.html)
+#   Optional variables: CLOUDFRONT_S3_BUCKET (static site), CLOUDFRONT_S3_DATA_BUCKET (uploads for /images/*)
+#   Behaviors: /api/* and /sitemap.xml → API; /images/* → data bucket (key without images/ prefix); default → SPA
 
 name: Deploy application
 
@@ -277,6 +278,11 @@ jobs:
           VITE_SITE_URL: ${{ vars.VITE_SITE_URL }}
         run: npm run build
 
+      - name: Write robots.txt for environment
+        env:
+          VITE_SITE_URL: ${{ vars.VITE_SITE_URL }}
+        run: bash scripts/write-robots.sh "${{ steps.target.outputs.tf_env }}"
+
       - name: Serverless deploy (S3 bucket stack)
         env:
           SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
@@ -301,6 +307,7 @@ jobs:
       TF_VAR_api_gateway_domain_name: ${{ vars.HTTP_API_EXECUTE_API_DOMAIN }}
       TF_VAR_cloudfront_alias: ${{ vars.CLOUDFRONT_ALIAS }}
       TF_VAR_s3_bucket_name: ${{ vars.CLOUDFRONT_S3_BUCKET }}
+      TF_VAR_s3_data_bucket_name: ${{ vars.CLOUDFRONT_S3_DATA_BUCKET }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
