@@ -34,13 +34,9 @@ This document lists **gaps** versus `MIGRATION_DAY_BY_DAY_PLAN.md` and the old s
 
 ## 3. Graduate year page — photos and lightbox
 
-**Missing:** `app/pages/graduates/[year].vue` shows **per-group images** with **lightbox** (`LightboxGallery`) and webp/original `picture` sources. `client/src/views/GraduatesYearPage.tsx` currently lists students only — **no image blocks, no lightbox**.
+**Done (React):** `client/src/views/GraduatesYearPage.tsx` matches `app/pages/graduates/[year].vue`: images are **bucketed by `img.specialty`** and shown under each student group after the list; thumbnails use **`picture` + webp** via `graduateImageWebpUrl` (same `/images/` → `/images-webp/` rule as Nuxt, plus `graduates_img/images` → `images-webp`). **`LightboxGallery`** (`client/src/components/LightboxGallery.tsx`) provides prev/next, overlay close, swipe, and **keyboard** (←/→/Escape). Body scroll lock while open.
 
-**What to do:**
-
-- Extend the year detail view to render `group.images` (or equivalent API fields) when present.
-- Add a **lightbox** component (React) matching prior UX (keyboard, gallery navigation).
-- Ensure image URLs work with **S3/CloudFront** (absolute vs path-only — same rules as teachers).
+**Verify in staging:** WebP URLs must resolve on CloudFront/S3 (e.g. `…/images-webp/graduates/…`) if you rely on webp in production.
 
 ---
 
@@ -111,7 +107,7 @@ This document lists **gaps** versus `MIGRATION_DAY_BY_DAY_PLAN.md` and the old s
 |------|--------|--------|
 | Cognito login + Bearer on API calls | Missing | §1 |
 | Admin teachers/graduates/layout UIs | Missing | §2 |
-| Graduate year photos + lightbox | Missing | §3 |
+| Graduate year photos + lightbox | Done | §3 |
 | Sitemap XML | Missing | §4 |
 | Webp/thumb pipeline after upload | Missing/incomplete | §5 |
 | Cron/queue deployment | Stub | §6 |

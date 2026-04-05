@@ -13,7 +13,46 @@ const xmlPath = join(repoRoot, "graduates.xml");
 const outDir = join(__dirname, "../migration/data");
 const outPath = join(outDir, "graduates-seed.json");
 
+/** Same host as teacher images; path `/images/graduates/{file}` → data-bucket key `graduates/...` after CloudFront strip. */
+const GRADUATE_IMAGE_CDN_BASE =
+  process.env.GRADUATE_IMAGE_CDN_BASE ||
+  process.env.TEACHER_IMAGE_CDN_BASE ||
+  "https://math-history-stage.afj-solution.com";
+
 const PK = "GRADUATE";
+
+/** Cohort photos from `migrations/teachers_db_dump.sql` (Graduates.images) — not present in graduates.xml. Key: `${year}:${number}`. */
+const SQL_COHORT_IMAGES = new Map([
+  [
+    "1955:1",
+    [
+      {
+        id: 1765391557860,
+        url: "/images/1765391557860.png",
+        caption: null,
+        specialty: "Математик. Вчитель математики середньої школи.",
+      },
+    ],
+  ],
+]);
+
+function normalizeGraduateImageUrl(url) {
+  const trimmed = String(url ?? "").trim();
+  if (!trimmed) return trimmed;
+  const direct = /^\/images\/([^/]+)$/.exec(trimmed);
+  if (direct) return `${GRADUATE_IMAGE_CDN_BASE}/images/graduates/${direct[1]}`;
+  return trimmed;
+}
+
+function cohortImagesFromSql(year, cohortNumber) {
+  const key = `${year}:${cohortNumber}`;
+  const raw = SQL_COHORT_IMAGES.get(key);
+  if (!raw) return [];
+  return raw.map((img) => ({
+    ...img,
+    url: normalizeGraduateImageUrl(img.url),
+  }));
+}
 
 function graduateSortKey(year, cohortId) {
   return `Y#${year}#${String(cohortId).padStart(9, "0")}`;
@@ -63,6 +102,7 @@ function parseGraduatesXml(xml) {
     const totalStudents = students.length;
     const totalWithHonours = students.filter((s) => s.honorsDegree).length;
     const sk = graduateSortKey(year, cohortId);
+    const sqlImages = cohortImagesFromSql(year, cohortNumber);
 
     items.push({
       pk: PK,
@@ -72,7 +112,7 @@ function parseGraduatesXml(xml) {
       year,
       number: cohortNumber,
       title,
-      images: [],
+      images: sqlImages,
       students,
       totalStudents,
       totalWithHonours,

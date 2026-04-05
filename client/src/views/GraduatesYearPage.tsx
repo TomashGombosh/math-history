@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { LightboxGallery } from "../components/LightboxGallery";
 import { apiGet } from "../lib/api";
+import type { GraduateCohortImage, GraduateYearDetail, GraduateYearSummary } from "../lib/apiTypes";
+import { graduateImageOriginalUrl, graduateImageWebpUrl } from "../lib/graduateImages";
 import { Seo } from "../lib/seo";
-import type { GraduateYearDetail, GraduateYearSummary } from "../lib/apiTypes";
 import "./GraduatesYearPage.css";
 
 type YearItem = { year: number };
@@ -14,10 +16,24 @@ type StudentGroup = {
   specialty: string;
   section: string;
   students: StudentRow[];
+  images: GraduateCohortImage[];
 };
+
+function buildImagesBySpecialty(images: GraduateCohortImage[]): Map<string, GraduateCohortImage[]> {
+  const map = new Map<string, GraduateCohortImage[]>();
+  for (const img of images) {
+    const specName = (img.specialty ?? "").trim();
+    if (!specName) continue;
+    if (!map.has(specName)) map.set(specName, []);
+    map.get(specName)!.push(img);
+  }
+  return map;
+}
 
 function groupStudentsBySpecialty(detail: GraduateYearDetail | null): StudentGroup[] {
   if (!detail || !Array.isArray(detail.students)) return [];
+
+  const imagesBySpecialty = buildImagesBySpecialty(detail.images ?? []);
 
   const map = new Map<string, StudentGroup>();
 
@@ -32,6 +48,7 @@ function groupStudentsBySpecialty(detail: GraduateYearDetail | null): StudentGro
         specialty,
         section,
         students: [],
+        images: imagesBySpecialty.get(specialty) ?? [],
       });
     }
 
@@ -59,8 +76,20 @@ export default function GraduatesYearPage() {
   const { year = "" } = useParams();
   const [detail, setDetail] = useState<GraduateYearDetail | null>(null);
   const [years, setYears] = useState<YearItem[]>([]);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxImages, setLightboxImages] = useState<GraduateCohortImage[]>([]);
+  const [lightboxStartIndex, setLightboxStartIndex] = useState(0);
+  const [lightboxMountKey, setLightboxMountKey] = useState(0);
 
   const groupedStudents = useMemo(() => groupStudentsBySpecialty(detail), [detail]);
+
+  const openLightbox = useCallback((images: GraduateCohortImage[], startIndex = 0) => {
+    if (!images.length) return;
+    setLightboxImages(images);
+    setLightboxStartIndex(startIndex);
+    setLightboxMountKey((k) => k + 1);
+    setLightboxOpen(true);
+  }, []);
 
   useEffect(() => {
     void apiGet<GraduateYearSummary[]>("/api/graduates/years")
@@ -118,10 +147,46 @@ export default function GraduatesYearPage() {
                   </li>
                 ))}
               </ol>
+
+              {group.images.length > 0 ? (
+                <div className="group-photos">
+                  {group.images.map((img, imgIndex) => {
+                    if (!img.url) return null;
+                    const original = graduateImageOriginalUrl(img.url);
+                    const webp = graduateImageWebpUrl(img.url);
+                    const alt =
+                      (img.caption != null && String(img.caption).trim()) || `Фото випуску ${year} – ${group.specialty}`;
+                    return (
+                      <button
+                        key={`${group.key}-photo-${imgIndex}`}
+                        type="button"
+                        className="group-photo"
+                        onClick={() => openLightbox(group.images, imgIndex)}
+                      >
+                        <picture>
+                          <source srcSet={webp} type="image/webp" />
+                          <img src={original} alt={alt} loading="lazy" width={320} height={200} />
+                        </picture>
+                        {img.caption != null && String(img.caption).trim() ? (
+                          <div className="photo-caption">{img.caption}</div>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
             </section>
           ))}
         </div>
       )}
+
+      <LightboxGallery
+        key={lightboxMountKey}
+        open={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+        images={lightboxImages}
+        startIndex={lightboxStartIndex}
+      />
     </div>
   );
 }

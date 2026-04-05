@@ -1,0 +1,30 @@
+---
+description: How public image URLs map to S3 (data vs static bucket) and CloudFront behaviors for this repo.
+alwaysApply: true
+---
+
+# Math history — images from S3 / CloudFront
+
+## Two buckets
+
+- **Static site bucket** (`s3-static`, e.g. `math-history-client-static-*`): default CloudFront behavior — SPA assets, `public/` files, anything not matching a more specific path pattern.
+- **Data / uploads bucket** (`s3-data`, e.g. `math-history-server-data-*`): used for user and migrated media behind **`/images/*`** only (see `infra/cloudfront/main.tf`).
+
+## Viewer URL → origin → S3 key (data bucket)
+
+- Path pattern **`/images/*`** → origin **`s3-data`**.
+- **CloudFront Function** `strip_images_prefix`: strips the first **7** characters of the URI (`/images`), so the origin sees a path starting with `/…`.
+  - Example: `https://<alias>/images/teachers/1.jpg` → forwarded URI like `/teachers/1.jpg` → S3 object key **`teachers/1.jpg`** (no leading slash in the key is typical for S3 REST).
+  - Example: `https://<alias>/images/graduates/1765391557860.png` → key **`graduates/1765391557860.png`**.
+- **Important:** There is **no** dedicated behavior for **`/images-webp/*`** in Terraform today. Requests to `…/images-webp/…` fall through to the **static** origin unless you add another behavior or host those objects on the static bucket. The client (`graduateImageWebpUrl`, legacy Nuxt rule) assumes `/images/…` → `/images-webp/…` on the **same host** — confirm objects and routing match in each environment.
+
+## Presigned uploads (API)
+
+- `server_v2/src/services/upload-service.ts` writes keys such as `teachers_img/images/<file>` or `graduates_img/images/<file>`; stored **`imageUrl`** is often path-style (`/teachers_img/images/…`). Seeds may use full **`https://<alias>/images/teachers/…`** or **`…/images/graduates/…`** for CDN-facing URLs aligned with the strip function.
+- **`deleteImageFiles`** (`server_v2/src/lib/image-s3.ts`) tries multiple key shapes: top-level `images/`, `images-webp/`, `images-thumbs-webp/`, and `teachers_img/…` / `graduates_img/…` variants — cleanup expects uploads and derivatives to follow that layout **in the bucket the API uses** (same data bucket as configured for Lambda/S3).
+
+## Local / Vite
+
+- Files under **`client/public/`** (e.g. `graduates_img/images/…`) are served from the **dev server origin**, not the data bucket. **`graduateImages.ts`** also maps `graduates_img/images/` → `graduates_img/images-webp/` for `<picture>` sources.
+
+When changing URL shapes or adding WebP/thumbs, keep **CloudFront path patterns**, **strip function**, **presign keys**, and **client URL helpers** in sync.

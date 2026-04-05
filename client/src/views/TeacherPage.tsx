@@ -12,13 +12,12 @@ import {
 import "./TeacherPage.css";
 
 function TeacherProfile({ slug }: { slug: string }) {
-  const [teacher, setTeacher] = useState<TeacherPageState | null>(null);
+  /** `undefined` = load in progress; `null` = not found; otherwise loaded. */
+  const [teacher, setTeacher] = useState<TeacherPageState | null | undefined>(undefined);
   const [layout, setLayout] = useState<LayoutConfigResponse>(() => normalizeTeacherPageLayout({}));
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
     void Promise.all([
       apiGet<TeacherDto>(`/api/teachers/by-slug/${encodeURIComponent(slug)}`),
       apiGet<LayoutConfigResponse>("/api/layout").catch(() => ({})),
@@ -40,9 +39,6 @@ function TeacherProfile({ slug }: { slug: string }) {
       })
       .catch(() => {
         if (!cancelled) setTeacher(null);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
       });
     return () => {
       cancelled = true;
@@ -54,11 +50,11 @@ function TeacherProfile({ slug }: { slug: string }) {
     [layout.sections],
   );
 
-  if (loading) {
+  if (teacher === undefined) {
     return <div className="teacher-page">Завантаження…</div>;
   }
 
-  if (!teacher) {
+  if (teacher === null) {
     return <div className="teacher-page">Викладача не знайдено</div>;
   }
 
