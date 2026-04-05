@@ -1,4 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
+import { ROUTES } from "../router/paths";
 import "./MainFooter.css";
 
 export function MainFooter() {
@@ -19,20 +20,20 @@ export function MainFooter() {
             </div>
           </div>
           <nav className="footer-nav">
-            <Link to="/" className={`footer-nav-link ${route.pathname === "/" ? "active" : ""}`}>
+            <Link to={ROUTES.home} className={`footer-nav-link ${route.pathname === ROUTES.home ? "active" : ""}`}>
               Головна
             </Link>
             <span className="footer-nav-separator">|</span>
             <Link
-              to="/teachers"
-              className={`footer-nav-link ${route.pathname.startsWith("/teachers") ? "active" : ""}`}
+              to={ROUTES.teachers}
+              className={`footer-nav-link ${route.pathname.startsWith(ROUTES.teachers) ? "active" : ""}`}
             >
               Викладачі
             </Link>
             <span className="footer-nav-separator">|</span>
             <Link
-              to="/graduates"
-              className={`footer-nav-link ${route.pathname.startsWith("/graduates") ? "active" : ""}`}
+              to={ROUTES.graduates}
+              className={`footer-nav-link ${route.pathname.startsWith(ROUTES.graduates) ? "active" : ""}`}
             >
               Випускники
             </Link>

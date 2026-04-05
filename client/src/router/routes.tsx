@@ -4,6 +4,7 @@ import type { RouteObject } from "react-router-dom";
 import { Navigate } from "react-router-dom";
 import { AppLayout } from "../shared/AppLayout";
 import { RequireAdmin } from "../state/RequireAdmin";
+import { ROUTE_PATTERNS, ROUTES, rrAdminChild, rrPath } from "./paths";
 
 const HomePage = lazy(() => import("../views/HomePage"));
 const TeachersPage = lazy(() => import("../views/TeachersPage"));
@@ -22,49 +23,49 @@ export const appRoutes: RouteObject[] = [
     element: <AppLayout />,
     children: [
       { index: true, element: <HomePage /> },
-      { path: "teachers", element: <TeachersPage /> },
-      { path: "teacher/:slug", element: <TeacherPage /> },
-      { path: "graduates", element: <GraduatesPage /> },
-      { path: "graduates/:year", element: <GraduatesYearPage /> },
-      { path: "login", element: <LoginPage /> },
+      { path: rrPath(ROUTES.teachers), element: <TeachersPage /> },
+      { path: ROUTE_PATTERNS.teacherDetail, element: <TeacherPage /> },
+      { path: rrPath(ROUTES.graduates), element: <GraduatesPage /> },
+      { path: ROUTE_PATTERNS.graduatesYear, element: <GraduatesYearPage /> },
+      { path: rrPath(ROUTES.login), element: <LoginPage /> },
       {
-        path: "admin",
+        path: rrPath(ROUTES.admin),
         element: <RequireAdmin />,
         children: [
           { index: true, element: <AdminHomePage /> },
           {
-            path: "teachers",
+            path: rrAdminChild(ROUTES.adminTeachers),
             element: <AdminPlaceholderPage title="Список викладачів" />,
           },
           {
-            path: "teachers/create",
+            path: rrAdminChild(ROUTES.adminTeachersCreate),
             element: <AdminPlaceholderPage title="Додати викладача" />,
           },
           {
-            path: "teachers/layout",
+            path: rrAdminChild(ROUTES.adminTeachersLayout),
             element: (
               <AdminPlaceholderPage title="Структура сторінки викладача" />
             ),
           },
           {
-            path: "teachers/:id/edit",
+            path: ROUTE_PATTERNS.adminTeacherEdit,
             element: <AdminPlaceholderPage title="Редагування викладача" />,
           },
           {
-            path: "graduates",
+            path: rrAdminChild(ROUTES.adminGraduates),
             element: <AdminPlaceholderPage title="Список випусків" />,
           },
           {
-            path: "graduates/create",
+            path: rrAdminChild(ROUTES.adminGraduatesCreate),
             element: <AdminPlaceholderPage title="Додати випуск" />,
           },
           {
-            path: "graduates/:year/edit",
+            path: ROUTE_PATTERNS.adminGraduateYearEdit,
             element: <AdminPlaceholderPage title="Редагування випуску" />,
           },
         ],
       },
-      { path: "*", element: <Navigate to="/" replace /> },
+      { path: "*", element: <Navigate to={ROUTES.home} replace /> },
     ],
   },
 ];

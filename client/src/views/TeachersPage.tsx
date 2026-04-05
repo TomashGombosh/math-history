@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Seo } from "../lib/seo";
-import { apiGet } from "../lib/api";
+import { ROUTES } from "../router/paths";
+import { apiGet } from "../services/api";
 import type { TeacherDto, TeachersListResponse } from "../lib/apiTypes";
 import "./TeachersPage.css";
 
@@ -30,13 +31,13 @@ export default function TeachersPage() {
       <Seo
         title="Викладачі"
         description="Список викладачів-математиків Ужгородського національного університету."
-        path="/teachers"
+        path={ROUTES.teachers}
       />
       <div className="teachers-page">
         <h1>Викладачі математичного факультету УжНУ</h1>
         <div className="grid">
           {teachers.map((t) => (
-            <Link key={t.id} to={`/teacher/${t.slug}`} className="card">
+            <Link key={t.id} to={ROUTES.teacherSlug(t.slug)} className="card">
               <div className="image-wrapper">{t.imageUrl ? <img src={t.imageUrl} alt={t.name} /> : null}</div>
               <div className="name">{t.name}</div>
             </Link>

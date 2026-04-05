@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Seo } from "../lib/seo";
-import { apiGet } from "../lib/api";
+import { ROUTES } from "../router/paths";
+import { apiGet } from "../services/api";
 import type { GraduateYearSummary, TeacherDto, TeachersListResponse } from "../lib/apiTypes";
 import "./HomePage.css";
 
@@ -48,7 +49,7 @@ export default function HomePage() {
       <Seo
         title="Головна"
         description="Математики УжНУ — історія викладачів та випускників математичного факультету Ужгородського національного університету."
-        path="/"
+        path={ROUTES.home}
       />
       <section className="home-block intro-section">
         <h1>Математики УжНУ — історія викладачів та випускників</h1>
@@ -66,20 +67,20 @@ export default function HomePage() {
       <section className="home-block">
         <div className="home-header">
           <h2>Викладачі</h2>
-          <Link to="/teachers" className="home-link">
+          <Link to={ROUTES.teachers} className="home-link">
             Усі викладачі →
           </Link>
         </div>
         <div className="teachers-grid">
           {teachers.map((t) => (
-            <Link key={t.id} to={`/teacher/${t.slug}`} className="teacher-card">
+            <Link key={t.id} to={ROUTES.teacherSlug(t.slug)} className="teacher-card">
               <div className="image-wrapper">{t.imageUrl ? <img src={t.imageUrl} alt={t.name} /> : null}</div>
               <div className="t-name">{t.name}</div>
             </Link>
           ))}
         </div>
         <div className="home-footer-link">
-          <Link to="/teachers" className="home-link">
+          <Link to={ROUTES.teachers} className="home-link">
             Переглянути всіх викладачів →
           </Link>
         </div>
@@ -87,13 +88,13 @@ export default function HomePage() {
       <section className="home-block">
         <div className="home-header">
           <h2>Роки випуску</h2>
-          <Link to="/graduates" className="home-link">
+          <Link to={ROUTES.graduates} className="home-link">
             Усі випуски →
           </Link>
         </div>
         <div className="years-grid">
           {years.map((item) => (
-            <Link key={item.year} to={`/graduates/${item.year}`} className="year-card">
+            <Link key={item.year} to={ROUTES.graduatesYear(item.year)} className="year-card">
               <div className="year-card__year">{item.year}</div>
               <div className="year-card__stats">
                 <div>К-ть випускників: {item.totalStudents}</div>
@@ -103,7 +104,7 @@ export default function HomePage() {
           ))}
         </div>
         <div className="home-footer-link">
-          <Link to="/graduates" className="home-link">
+          <Link to={ROUTES.graduates} className="home-link">
             Переглянути всі роки випуску →
           </Link>
         </div>
