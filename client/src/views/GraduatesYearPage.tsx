@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { LightboxGallery } from "../components/LightboxGallery";
+import { GraduatesYearContentSkeleton, GraduatesYearNavSkeleton } from "../components/skeletons/PageSkeletons";
 import { ROUTES } from "../router/paths";
 import { apiGet } from "../services/api";
 import type { GraduateCohortImage, GraduateYearDetail, GraduateYearSummary } from "../lib/apiTypes";
@@ -31,7 +32,7 @@ function buildImagesBySpecialty(images: GraduateCohortImage[]): Map<string, Grad
   return map;
 }
 
-function groupStudentsBySpecialty(detail: GraduateYearDetail | null): StudentGroup[] {
+function groupStudentsBySpecialty(detail: GraduateYearDetail | null | undefined): StudentGroup[] {
   if (!detail || !Array.isArray(detail.students)) return [];
 
   const imagesBySpecialty = buildImagesBySpecialty(detail.images ?? []);
@@ -75,8 +76,10 @@ function groupStudentsBySpecialty(detail: GraduateYearDetail | null): StudentGro
 
 export default function GraduatesYearPage() {
   const { year = "" } = useParams();
-  const [detail, setDetail] = useState<GraduateYearDetail | null>(null);
+  /** `undefined` while fetching; `null` if API has no cohort for this year. */
+  const [detail, setDetail] = useState<GraduateYearDetail | null | undefined>(undefined);
   const [years, setYears] = useState<YearItem[]>([]);
+  const [yearsLoading, setYearsLoading] = useState(true);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxImages, setLightboxImages] = useState<GraduateCohortImage[]>([]);
   const [lightboxStartIndex, setLightboxStartIndex] = useState(0);
@@ -93,15 +96,35 @@ export default function GraduatesYearPage() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     void apiGet<GraduateYearSummary[]>("/api/graduates/years")
-      .then((rows) => setYears(rows.map((r) => ({ year: r.year }))))
-      .catch(() => setYears([]));
+      .then((rows) => {
+        if (!cancelled) setYears(rows.map((r) => ({ year: r.year })));
+      })
+      .catch(() => {
+        if (!cancelled) setYears([]);
+      })
+      .finally(() => {
+        if (!cancelled) setYearsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    setDetail(undefined);
     void apiGet<GraduateYearDetail>(`/api/graduates/${encodeURIComponent(year)}`)
-      .then(setDetail)
-      .catch(() => setDetail(null));
+      .then((d) => {
+        if (!cancelled) setDetail(d);
+      })
+      .catch(() => {
+        if (!cancelled) setDetail(null);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [year]);
 
   return (
@@ -117,19 +140,25 @@ export default function GraduatesYearPage() {
         навчання. Відмінники виділені жирним шрифтом.
       </p>
 
-      <div className="years-table">
-        {years.map((y) => (
-          <Link
-            key={y.year}
-            to={ROUTES.graduatesYear(y.year)}
-            className={`year-cell ${String(y.year) === String(year) ? "active" : ""}`}
-          >
-            {y.year}
-          </Link>
-        ))}
-      </div>
+      {yearsLoading ? (
+        <GraduatesYearNavSkeleton />
+      ) : (
+        <div className="years-table">
+          {years.map((y) => (
+            <Link
+              key={y.year}
+              to={ROUTES.graduatesYear(y.year)}
+              className={`year-cell ${String(y.year) === String(year) ? "active" : ""}`}
+            >
+              {y.year}
+            </Link>
+          ))}
+        </div>
+      )}
 
-      {!detail ? (
+      {detail === undefined ? (
+        <GraduatesYearContentSkeleton />
+      ) : detail === null ? (
         <div className="graduates-year-empty">Дані для цього року не знайдені</div>
       ) : (
         <div className="year-content">

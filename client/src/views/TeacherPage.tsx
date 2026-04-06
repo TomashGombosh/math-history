@@ -10,6 +10,7 @@ import {
   teacherHasSectionContent,
   type TeacherPageState,
 } from "../lib/teacherPageLayout";
+import { TeacherDetailSkeleton } from "../components/skeletons/PageSkeletons";
 import "./TeacherPage.css";
 
 function TeacherProfile({ slug }: { slug: string }) {
@@ -52,7 +53,7 @@ function TeacherProfile({ slug }: { slug: string }) {
   );
 
   if (teacher === undefined) {
-    return <div className="teacher-page">Завантаження…</div>;
+    return <TeacherDetailSkeleton />;
   }
 
   if (teacher === null) {

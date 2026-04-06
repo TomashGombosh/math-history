@@ -1,6 +1,5 @@
-import CircularProgress from "@mui/material/CircularProgress";
-import Box from "@mui/material/Box";
 import { Outlet } from "react-router-dom";
+import { RouteFallbackSkeleton } from "../components/skeletons/PageSkeletons";
 import NotFoundPage from "../views/NotFoundPage";
 import { useAuth } from "./AuthContext";
 
@@ -9,11 +8,7 @@ export function RequireAdmin() {
   const { isAuthed, authReady } = useAuth();
 
   if (!authReady) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="40vh">
-        <CircularProgress aria-label="Завантаження сесії" />
-      </Box>
-    );
+    return <RouteFallbackSkeleton aria-label="Завантаження сесії" />;
   }
 
   if (!isAuthed) {

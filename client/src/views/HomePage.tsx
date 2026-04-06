@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { HomePageSectionsSkeleton } from "../components/skeletons/PageSkeletons";
 import { Seo } from "../lib/seo";
 import { ROUTES } from "../router/paths";
 import { apiGet } from "../services/api";
@@ -29,8 +30,10 @@ function pickYears(rows: GraduateYearSummary[]): YearItem[] {
 export default function HomePage() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [years, setYears] = useState<YearItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
     void Promise.all([
       apiGet<TeachersListResponse>("/api/teachers", { page: 1, limit: 12 }).then((r) =>
         setTeachers(pickTeachers(r.teachers))
@@ -38,10 +41,17 @@ export default function HomePage() {
       apiGet<GraduateYearSummary[]>("/api/graduates/years").then((rows) =>
         setYears(pickYears(rows).sort((a, b) => b.year - a.year).slice(0, 12))
       ),
-    ]).catch(() => {
-      setTeachers([]);
-      setYears([]);
-    });
+    ])
+      .catch(() => {
+        setTeachers([]);
+        setYears([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
@@ -64,51 +74,59 @@ export default function HomePage() {
           розвиток факультету, кількісні зміни та успішність студентів у різні періоди.
         </p>
       </section>
-      <section className="home-block">
-        <div className="home-header">
-          <h2>Викладачі</h2>
-          <Link to={ROUTES.teachers} className="home-link">
-            Усі викладачі →
-          </Link>
-        </div>
-        <div className="teachers-grid">
-          {teachers.map((t) => (
-            <Link key={t.id} to={ROUTES.teacherSlug(t.slug)} className="teacher-card">
-              <div className="image-wrapper">{t.imageUrl ? <img src={t.imageUrl} alt={t.name} /> : null}</div>
-              <div className="t-name">{t.name}</div>
-            </Link>
-          ))}
-        </div>
-        <div className="home-footer-link">
-          <Link to={ROUTES.teachers} className="home-link">
-            Переглянути всіх викладачів →
-          </Link>
-        </div>
-      </section>
-      <section className="home-block">
-        <div className="home-header">
-          <h2>Роки випуску</h2>
-          <Link to={ROUTES.graduates} className="home-link">
-            Усі випуски →
-          </Link>
-        </div>
-        <div className="years-grid">
-          {years.map((item) => (
-            <Link key={item.year} to={ROUTES.graduatesYear(item.year)} className="year-card">
-              <div className="year-card__year">{item.year}</div>
-              <div className="year-card__stats">
-                <div>К-ть випускників: {item.totalStudents}</div>
-                <div>З відзнакою: {item.totalWithHonours}</div>
-              </div>
-            </Link>
-          ))}
-        </div>
-        <div className="home-footer-link">
-          <Link to={ROUTES.graduates} className="home-link">
-            Переглянути всі роки випуску →
-          </Link>
-        </div>
-      </section>
+      {loading ? (
+        <HomePageSectionsSkeleton />
+      ) : (
+        <>
+          <section className="home-block">
+            <div className="home-header">
+              <h2>Викладачі</h2>
+              <Link to={ROUTES.teachers} className="home-link">
+                Усі викладачі →
+              </Link>
+            </div>
+            <div className="teachers-grid">
+              {teachers.map((t) => (
+                <Link key={t.id} to={ROUTES.teacherSlug(t.slug)} className="teacher-card">
+                  <div className="image-wrapper">{t.imageUrl ? <img src={t.imageUrl} alt={t.name} /> : null}</div>
+                  <div className="t-name">{t.name}</div>
+                </Link>
+              ))}
+            </div>
+            {!teachers.length ? <p className="home-empty-hint">Немає даних про викладачів.</p> : null}
+            <div className="home-footer-link">
+              <Link to={ROUTES.teachers} className="home-link">
+                Переглянути всіх викладачів →
+              </Link>
+            </div>
+          </section>
+          <section className="home-block">
+            <div className="home-header">
+              <h2>Роки випуску</h2>
+              <Link to={ROUTES.graduates} className="home-link">
+                Усі випуски →
+              </Link>
+            </div>
+            <div className="years-grid">
+              {years.map((item) => (
+                <Link key={item.year} to={ROUTES.graduatesYear(item.year)} className="year-card">
+                  <div className="year-card__year">{item.year}</div>
+                  <div className="year-card__stats">
+                    <div>К-ть випускників: {item.totalStudents}</div>
+                    <div>З відзнакою: {item.totalWithHonours}</div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+            {!years.length ? <p className="home-empty-hint">Немає даних про роки випуску.</p> : null}
+            <div className="home-footer-link">
+              <Link to={ROUTES.graduates} className="home-link">
+                Переглянути всі роки випуску →
+              </Link>
+            </div>
+          </section>
+        </>
+      )}
     </div>
   );
 }
