@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { GraduatesYearsGridSkeleton } from "../components/skeletons/PageSkeletons";
 import { Seo } from "../lib/seo";
+import { breadcrumbJsonLd, getSiteUrl } from "../lib/seoHelpers";
 import { ROUTES } from "../router/paths";
 import { apiGet } from "../services/api";
 import type { GraduateYearSummary } from "../lib/apiTypes";
@@ -36,7 +37,15 @@ export default function GraduatesPage() {
 
   return (
     <div className="graduates-page">
-      <Seo title="Роки випуску" description="Роки випуску студентів-математиків УжНУ." path={ROUTES.graduates} />
+      <Seo
+        title="Роки випуску"
+        description="Роки випуску студентів-математиків УжНУ."
+        path={ROUTES.graduates}
+        jsonLd={breadcrumbJsonLd(getSiteUrl(), [
+          { name: "Головна", path: ROUTES.home },
+          { name: "Роки випуску", path: ROUTES.graduates },
+        ])}
+      />
       <h1>Роки випуску студентів-математиків УжНУ</h1>
       {loading ? (
         <GraduatesYearsGridSkeleton />
