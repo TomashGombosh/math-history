@@ -85,6 +85,7 @@ type CohortProps = {
  */
 function GraduatesYearCohortContent({ year, openLightbox }: CohortProps) {
   const [detail, setDetail] = useState<GraduateYearDetail | null | undefined>(undefined);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -93,7 +94,10 @@ function GraduatesYearCohortContent({ year, openLightbox }: CohortProps) {
         if (!cancelled) setDetail(d);
       })
       .catch(() => {
-        if (!cancelled) setDetail(null);
+        if (!cancelled) {
+          setDetail(null);
+          setLoadError(true);
+        }
       });
     return () => {
       cancelled = true;
@@ -104,6 +108,14 @@ function GraduatesYearCohortContent({ year, openLightbox }: CohortProps) {
 
   if (detail === undefined) {
     return <GraduatesYearContentSkeleton />;
+  }
+
+  if (loadError) {
+    return (
+      <div className="graduates-year-error" role="alert">
+        Помилка завантаження даних для {year} року
+      </div>
+    );
   }
 
   if (detail === null) {
@@ -170,6 +182,15 @@ export default function GraduatesYearPage() {
   const [lightboxStartIndex, setLightboxStartIndex] = useState(0);
   const [lightboxMountKey, setLightboxMountKey] = useState(0);
 
+  const yearBreadcrumb = useMemo(
+    () => [
+      { name: "Головна", path: ROUTES.home },
+      { name: "Роки випуску", path: ROUTES.graduates },
+      { name: `Випуск ${year} року`, path: ROUTES.graduatesYear(year) },
+    ],
+    [year],
+  );
+
   const openLightbox = useCallback((images: GraduateCohortImage[], startIndex = 0) => {
     if (!images.length) return;
     setLightboxImages(images);
@@ -199,8 +220,9 @@ export default function GraduatesYearPage() {
     <div className="graduates-year-page">
       <Seo
         title={`Випуск ${year} року`}
-        description={`Випуск ${year} року студентів-математиків УжНУ.`}
+        description={`Випуск ${year} року студентів-математиків УжНУ: список випускників за спеціальностями, відмінники та фото груп.`}
         path={ROUTES.graduatesYear(year)}
+        breadcrumbItems={yearBreadcrumb}
       />
       <h1>Випуск {year} року</h1>
       <p className="page-intro">

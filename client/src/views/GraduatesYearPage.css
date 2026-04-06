@@ -5,13 +5,18 @@
   background: #fff;
 }
 
+.graduates-year-page h1 {
+  margin-bottom: 10px;
+}
+
 .page-intro {
   margin-bottom: 16px;
   font-size: 14px;
   line-height: 1.5;
 }
 
-.graduates-year-empty {
+.graduates-year-empty,
+.graduates-year-error {
   margin-top: 16px;
 }
 
@@ -56,6 +61,7 @@
   padding: 0;
   column-count: 2;
   column-gap: 40px;
+  display: inline-block;
 }
 
 .students-list li {
@@ -114,6 +120,27 @@
 @media (max-width: 768px) {
   .graduates-year-page {
     padding: 16px 10px;
+  }
+
+  .graduates-year-page h1 {
+    font-size: 22px;
+    text-align: center;
+  }
+
+  .page-intro {
+    font-size: 13px;
+    text-align: center;
+  }
+
+  .years-table {
+    gap: 3px;
+    margin-bottom: 16px;
+    justify-content: center;
+  }
+
+  .year-cell {
+    padding: 3px 8px;
+    font-size: 11px;
   }
 
   .students-list {
