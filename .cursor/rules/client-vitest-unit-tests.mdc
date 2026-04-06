@@ -1,0 +1,103 @@
+---
+description: Vitest + Testing Library unit tests for client (file layout, queries, mocks, forbidden patterns)
+globs:
+  - "client/**/*.test.{ts,tsx}"
+  - "client/**/*.spec.{ts,tsx}"
+  - "client/src/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# Client unit tests (Vitest)
+
+Use **Vitest** (`describe`, `it`/`test`, `expect`, `vi`) with **`@testing-library/react`** and **`@testing-library/jest-dom`** matchers. Prefer **`@testing-library/user-event`** for interactions. Run via the client’s test script once `vitest` / `jsdom` are configured in Vite.
+
+## 1. File naming and placement
+
+- Suffix tests with **`.test.ts`**, **`.test.tsx`**, **`.spec.ts`**, or **`.spec.tsx`** (TSX for components).
+- Place files under **`client/src/test/`**, mirroring the tree under **`client/src/`** (omit `test/` from the mirrored path).
+  - Example: `client/src/views/LoginPage.tsx` → `client/src/test/views/LoginPage.test.tsx`
+
+## 2. Structure
+
+- Use **`describe`** to group related cases; nest for large components.
+- Use **`it`** / **`test`** for single behaviors.
+- Use **`beforeEach`** / **`afterEach`** for setup and cleanup; **`beforeAll`** / **`afterAll`** only when shared expensive setup is justified.
+- Order blocks consistently when helpful: **render → interactions → edge cases / errors**.
+
+## 3. Test titles
+
+- Phrase expectations clearly, often with **“should …”**.
+- Use **camelCase** for any programmatic test names if used.
+
+## 4. Assertions
+
+- Prefer **jest-dom** matchers: **`toBeInTheDocument()`**, **`toHaveAttribute()`**, **`toBeVisible()`**, etc., when they match the claim.
+- Assert what the user sees and can do, not internal state (avoid over-specifying implementation).
+- **Do not use `toHaveClass()`** for styling checks; do **not** assert arbitrary **CSS class strings** (including utilities, responsive prefixes, colors, spacing). Treat styling as implementation detail unless a test documents a11y or behavior tied to attributes/roles.
+
+## 5. Mocking (Vitest)
+
+- Mock network, env, and heavy modules with **`vi.mock()`**; mock functions with **`vi.fn()`**.
+- Mock **`window`** APIs as needed (**`localStorage`**, **`matchMedia`**, **`ResizeObserver`**, etc.).
+- Reset mocks in **`beforeEach`** with **`vi.clearAllMocks()`** when tests would otherwise leak state.
+
+## 6. Testing Library queries
+
+- Default to **`screen.getByRole()`** (and **`findByRole`** / **`queryByRole`** when async or absence matters).
+- Use **`getByText`** / **`findByText`** for copy that matters to users.
+- Use **`getByTestId`** only when roles/labels are not enough; **kebab-case** ids, concise and stable (e.g. **`submit-button`**, **`nav-item-${id}`**).
+
+## 7. Components
+
+- Cover **render**, **user actions** (click, type, submit), **loading and error UI**, and important **edge cases** / **props** / **provider** variants.
+- For async UI, use **`waitFor()`** and **`findBy*`**; assert **loading** then **settled** states when relevant.
+
+## 8. Accessibility
+
+- Prefer assertions that align with **roles**, **names**, and **ARIA** where it defines behavior.
+- When behavior depends on keyboard support, simulate **user-event** keyboard and assert focus/outcome—not class names.
+
+## 9. Performance
+
+- Keep tests small and fast; mock heavy work (API, large libs, timers with **`vi.useFakeTimers()`** when appropriate).
+
+## 10. Errors and async
+
+- Cover **validation**, **failed requests**, and **async** rejection paths where the UI promises feedback.
+
+## 11. Coverage
+
+- Aim for strong coverage on **critical paths**; avoid covering internals only to raise a percentage.
+
+## 12. Integration-style component tests
+
+- Where valuable, exercise **Router**, **providers**, and **multi-step flows** with realistic wrappers and mocks.
+
+## 13. Forbidden patterns (do not generate)
+
+- **`toHaveClass()`** and tests whose main point is **className** / **Tailwind-style** tokens.
+- Tests that only lock **layout/color/spacing** classes or **breakpoint** classes.
+- **Snapshot abuse** for large DOM trees when a targeted query is clearer.
+
+## 14. Minimal component example (shape only)
+
+```tsx
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { LoginPage } from '../../views/LoginPage';
+
+describe('LoginPage', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('should submit credentials when the form is valid', async () => {
+		const user = userEvent.setup();
+		render(<LoginPage />);
+		await user.type(screen.getByLabelText(/email/i), 'a@b.com');
+		await user.click(screen.getByRole('button', { name: /sign in/i }));
+		// assert result or mock call — not class names
+	});
+});
+```
