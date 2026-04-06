@@ -3,6 +3,7 @@
  * Use `*Authed` helpers for routes behind the API Gateway Cognito JWT authorizer.
  */
 export {
+  ApiError,
   apiDeleteAuthed,
   apiGet,
   apiGetAuthed,

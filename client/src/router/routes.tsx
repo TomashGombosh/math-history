@@ -13,9 +13,13 @@ const GraduatesPage = lazy(() => import("../views/GraduatesPage"));
 const GraduatesYearPage = lazy(() => import("../views/GraduatesYearPage"));
 const LoginPage = lazy(() => import("../views/LoginPage"));
 const AdminHomePage = lazy(() => import("../views/admin/AdminHomePage"));
-const AdminPlaceholderPage = lazy(
-  () => import("../views/admin/AdminPlaceholderPage")
-);
+const AdminTeachersListPage = lazy(() => import("../views/admin/AdminTeachersListPage"));
+const AdminTeacherCreatePage = lazy(() => import("../views/admin/AdminTeacherCreatePage"));
+const AdminTeacherEditPage = lazy(() => import("../views/admin/AdminTeacherEditPage"));
+const AdminLayoutSettingsPage = lazy(() => import("../views/admin/AdminLayoutSettingsPage"));
+const AdminGraduatesListPage = lazy(() => import("../views/admin/AdminGraduatesListPage"));
+const AdminGraduateCreatePage = lazy(() => import("../views/admin/AdminGraduateCreatePage"));
+const AdminGraduateYearEditPage = lazy(() => import("../views/admin/AdminGraduateYearEditPage"));
 
 export const appRoutes: RouteObject[] = [
   {
@@ -35,33 +39,31 @@ export const appRoutes: RouteObject[] = [
           { index: true, element: <AdminHomePage /> },
           {
             path: rrAdminChild(ROUTES.adminTeachers),
-            element: <AdminPlaceholderPage title="Список викладачів" />,
+            element: <AdminTeachersListPage />,
           },
           {
             path: rrAdminChild(ROUTES.adminTeachersCreate),
-            element: <AdminPlaceholderPage title="Додати викладача" />,
+            element: <AdminTeacherCreatePage />,
           },
           {
             path: rrAdminChild(ROUTES.adminTeachersLayout),
-            element: (
-              <AdminPlaceholderPage title="Структура сторінки викладача" />
-            ),
+            element: <AdminLayoutSettingsPage />,
           },
           {
             path: ROUTE_PATTERNS.adminTeacherEdit,
-            element: <AdminPlaceholderPage title="Редагування викладача" />,
+            element: <AdminTeacherEditPage />,
           },
           {
             path: rrAdminChild(ROUTES.adminGraduates),
-            element: <AdminPlaceholderPage title="Список випусків" />,
+            element: <AdminGraduatesListPage />,
           },
           {
             path: rrAdminChild(ROUTES.adminGraduatesCreate),
-            element: <AdminPlaceholderPage title="Додати випуск" />,
+            element: <AdminGraduateCreatePage />,
           },
           {
             path: ROUTE_PATTERNS.adminGraduateYearEdit,
-            element: <AdminPlaceholderPage title="Редагування випуску" />,
+            element: <AdminGraduateYearEditPage />,
           },
         ],
       },
