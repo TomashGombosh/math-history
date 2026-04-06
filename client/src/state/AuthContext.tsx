@@ -1,5 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { cognitoSignInAdmin, cognitoSignOut, loadPersistedAdminSession } from "../lib/cognito-auth";
+import {
+  cognitoConfirmNewPasswordAdmin,
+  cognitoSignInAdmin,
+  cognitoSignOut,
+  loadPersistedAdminSession,
+  type CognitoSignInAdminResult,
+} from "../lib/cognito-auth";
 import { isCognitoConfigured } from "../lib/cognito-config";
 
 type AuthContextValue = {
@@ -7,7 +13,8 @@ type AuthContextValue = {
   isAuthed: boolean;
   /** Initial session probe finished (avoid redirect flash). */
   authReady: boolean;
-  loginWithEmailPassword: (email: string, password: string) => Promise<void>;
+  loginWithEmailPassword: (email: string, password: string) => Promise<CognitoSignInAdminResult>;
+  confirmNewPassword: (newPassword: string, userAttributes?: Record<string, string>) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -33,7 +40,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const loginWithEmailPassword = useCallback(async (email: string, password: string) => {
-    await cognitoSignInAdmin(email, password);
+    const result = await cognitoSignInAdmin(email, password);
+    if (result.status === "signed_in") {
+      setIsAuthed(true);
+    }
+    return result;
+  }, []);
+
+  const confirmNewPassword = useCallback(async (newPassword: string, userAttributes?: Record<string, string>) => {
+    await cognitoConfirmNewPasswordAdmin(newPassword, userAttributes);
     setIsAuthed(true);
   }, []);
 
@@ -47,9 +62,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAuthed,
       authReady,
       loginWithEmailPassword,
+      confirmNewPassword,
       logout,
     }),
-    [isAuthed, authReady, loginWithEmailPassword, logout]
+    [isAuthed, authReady, loginWithEmailPassword, confirmNewPassword, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
