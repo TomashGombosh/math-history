@@ -13,11 +13,11 @@ const xmlPath = join(repoRoot, "graduates.xml");
 const outDir = join(__dirname, "../migration/data");
 const outPath = join(outDir, "graduates-seed.json");
 
-/** Same host as teacher images; path `/images/graduates/{file}` → data-bucket key `graduates/...` after CloudFront strip. */
+/** Same assets CDN as teacher images; S3 keys under `graduates/`. */
 const GRADUATE_IMAGE_CDN_BASE =
   process.env.GRADUATE_IMAGE_CDN_BASE ||
   process.env.TEACHER_IMAGE_CDN_BASE ||
-  "https://math-history-stage.afj-solution.com";
+  "https://assets-math-stage.afj-solution.com";
 
 const PK = "GRADUATE";
 
@@ -39,8 +39,11 @@ const SQL_COHORT_IMAGES = new Map([
 function normalizeGraduateImageUrl(url) {
   const trimmed = String(url ?? "").trim();
   if (!trimmed) return trimmed;
-  const direct = /^\/images\/([^/]+)$/.exec(trimmed);
-  if (direct) return `${GRADUATE_IMAGE_CDN_BASE}/images/graduates/${direct[1]}`;
+  const m = /^\/images\/(.+)$/.exec(trimmed);
+  if (m) {
+    const rest = m[1];
+    return `${GRADUATE_IMAGE_CDN_BASE}/${rest.startsWith("graduates/") ? rest : `graduates/${rest}`}`;
+  }
   return trimmed;
 }
 
