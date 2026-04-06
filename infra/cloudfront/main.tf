@@ -1,14 +1,9 @@
 locals {
   static_bucket_name = trimspace(var.s3_bucket_name) != "" ? trimspace(var.s3_bucket_name) : "math-history-client-static-${var.environment}"
-  data_bucket_name   = trimspace(var.s3_data_bucket_name) != "" ? trimspace(var.s3_data_bucket_name) : "math-history-server-data-${var.environment}"
 }
 
 data "aws_s3_bucket" "static" {
   bucket = local.static_bucket_name
-}
-
-data "aws_s3_bucket" "data" {
-  bucket = local.data_bucket_name
 }
 
 data "aws_cloudfront_cache_policy" "caching_disabled" {
@@ -33,33 +28,6 @@ resource "aws_cloudfront_origin_access_control" "static" {
   origin_access_control_origin_type = "s3"
   signing_behavior                  = "always"
   signing_protocol                  = "sigv4"
-}
-
-resource "aws_cloudfront_origin_access_control" "data" {
-  name                              = "math-history-data-${var.environment}"
-  description                       = "OAC for ${local.data_bucket_name} (/images/*)"
-  origin_access_control_origin_type = "s3"
-  signing_behavior                  = "always"
-  signing_protocol                  = "sigv4"
-}
-
-# Strip /images so https://.../images/teachers/1.jpg → S3 key teachers/1.jpg
-resource "aws_cloudfront_function" "strip_images_prefix" {
-  name    = "math-history-strip-images-${var.environment}"
-  runtime = "cloudfront-js-2.0"
-  publish = true
-  code    = <<-EOF
-    function handler(event) {
-      var request = event.request;
-      var uri = request.uri;
-      if (uri.startsWith("/images/")) {
-        request.uri = uri.substring(7);
-      } else if (uri === "/images") {
-        request.uri = "/";
-      }
-      return request;
-    }
-  EOF
 }
 
 resource "aws_cloudfront_distribution" "site" {
@@ -92,12 +60,6 @@ resource "aws_cloudfront_distribution" "site" {
       origin_protocol_policy = "https-only"
       origin_ssl_protocols   = ["TLSv1.2"]
     }
-  }
-
-  origin {
-    origin_id                = "s3-data"
-    domain_name              = data.aws_s3_bucket.data.bucket_regional_domain_name
-    origin_access_control_id = aws_cloudfront_origin_access_control.data.id
   }
 
   default_cache_behavior {
@@ -133,23 +95,6 @@ resource "aws_cloudfront_distribution" "site" {
 
     cache_policy_id          = data.aws_cloudfront_cache_policy.caching_disabled.id
     origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer_except_host.id
-  }
-
-  ordered_cache_behavior {
-    path_pattern           = "/images/*"
-    target_origin_id       = "s3-data"
-    viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
-    cached_methods         = ["GET", "HEAD"]
-    compress               = true
-
-    cache_policy_id          = data.aws_cloudfront_cache_policy.caching_optimized.id
-    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.cors_s3.id
-
-    function_association {
-      event_type   = "viewer-request"
-      function_arn = aws_cloudfront_function.strip_images_prefix.arn
-    }
   }
 
   custom_error_response {
@@ -191,30 +136,6 @@ resource "aws_s3_bucket_policy" "cloudfront_oac" {
         }
         Action   = "s3:GetObject"
         Resource = "${data.aws_s3_bucket.static.arn}/*"
-        Condition = {
-          StringEquals = {
-            "AWS:SourceArn" = aws_cloudfront_distribution.site.arn
-          }
-        }
-      }
-    ]
-  })
-}
-
-resource "aws_s3_bucket_policy" "cloudfront_oac_data" {
-  bucket = data.aws_s3_bucket.data.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "AllowCloudFrontOACReadImages"
-        Effect = "Allow"
-        Principal = {
-          Service = "cloudfront.amazonaws.com"
-        }
-        Action   = "s3:GetObject"
-        Resource = "${data.aws_s3_bucket.data.arn}/*"
         Condition = {
           StringEquals = {
             "AWS:SourceArn" = aws_cloudfront_distribution.site.arn
