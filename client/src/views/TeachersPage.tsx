@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { TeachersGridSkeleton } from "../components/skeletons/PageSkeletons";
 import { Seo } from "../lib/seo";
 import { ROUTES } from "../router/paths";
 import { apiGet } from "../services/api";
@@ -10,8 +11,10 @@ type Teacher = { id: number; slug: string; name: string; imageUrl?: string | nul
 
 export default function TeachersPage() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
     void apiGet<TeachersListResponse>("/api/teachers", { page: 1, limit: 24 })
       .then((r) =>
         setTeachers(
@@ -23,7 +26,13 @@ export default function TeachersPage() {
           }))
         )
       )
-      .catch(() => setTeachers([]));
+      .catch(() => setTeachers([]))
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
@@ -35,14 +44,21 @@ export default function TeachersPage() {
       />
       <div className="teachers-page">
         <h1>Викладачі математичного факультету УжНУ</h1>
-        <div className="grid">
-          {teachers.map((t) => (
-            <Link key={t.id} to={ROUTES.teacherSlug(t.slug)} className="card">
-              <div className="image-wrapper">{t.imageUrl ? <img src={t.imageUrl} alt={t.name} /> : null}</div>
-              <div className="name">{t.name}</div>
-            </Link>
-          ))}
-        </div>
+        {loading ? (
+          <TeachersGridSkeleton />
+        ) : (
+          <>
+            <div className="grid">
+              {teachers.map((t) => (
+                <Link key={t.id} to={ROUTES.teacherSlug(t.slug)} className="card">
+                  <div className="image-wrapper">{t.imageUrl ? <img src={t.imageUrl} alt={t.name} /> : null}</div>
+                  <div className="name">{t.name}</div>
+                </Link>
+              ))}
+            </div>
+            {!teachers.length ? <p className="teachers-empty-hint">Інформацію про викладачів не знайдено.</p> : null}
+          </>
+        )}
       </div>
     </div>
   );
