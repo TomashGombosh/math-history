@@ -12,7 +12,7 @@ export function RequireAdmin() {
   }
 
   if (!isAuthed) {
-    return <NotFoundPage />;
+    return <NotFoundPage suppressSeo />;
   }
 
   return <Outlet />;
