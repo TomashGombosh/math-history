@@ -13,9 +13,9 @@ const sqlPath = join(repoRoot, "migrations/teachers_db_dump.sql");
 const outDir = join(__dirname, "../migration/data");
 const outPath = join(outDir, "teachers-seed.json");
 
-/** Public image base for legacy `/images/{file}` paths from SQL (CloudFront `/images/teachers/…` → data bucket). */
+/** Public CDN host for teacher photos (S3 keys under `teachers/`; separate CloudFront distribution). */
 const TEACHER_IMAGE_CDN_BASE =
-  process.env.TEACHER_IMAGE_CDN_BASE || "https://math-history-stage.afj-solution.com";
+  process.env.TEACHER_IMAGE_CDN_BASE || "https://assets-math-stage.afj-solution.com";
 
 const PK_TEACHER = "TEACHER";
 
@@ -36,7 +36,10 @@ function normalizeImageUrl(val) {
   const trimmed = String(val ?? "").trim();
   if (!trimmed) return "/profile-icon.webp";
   const m = /^\/images\/(.+)$/.exec(trimmed);
-  if (m) return `${TEACHER_IMAGE_CDN_BASE}/images/teachers/${m[1]}`;
+  if (m) {
+    const rest = m[1];
+    return `${TEACHER_IMAGE_CDN_BASE}/${rest.startsWith("teachers/") ? rest : `teachers/${rest}`}`;
+  }
   return trimmed;
 }
 
