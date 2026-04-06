@@ -79,18 +79,44 @@ type CohortProps = {
   openLightbox: (images: GraduateCohortImage[], startIndex?: number) => void;
 };
 
+const STUDENT_PAGE = 80;
+
+function appendHonorsStudents(
+  chunk: GraduateYearDetail["students"]
+): (GraduateYearDetail["students"][number] & { isHonors: boolean })[] {
+  return chunk.map((st) => {
+    const raw = st as { honorsDegree?: unknown; isBold?: unknown };
+    const honors =
+      raw.honorsDegree === true ||
+      raw.honorsDegree === "true" ||
+      raw.isBold === true ||
+      raw.isBold === "true";
+    return { ...st, isHonors: Boolean(honors) };
+  });
+}
+
 /**
  * Mounted with `key={year}` so a route year change remounts and `detail` starts as `undefined`
  * without synchronous setState in an effect (react-hooks/set-state-in-effect).
  */
 function GraduatesYearCohortContent({ year, openLightbox }: CohortProps) {
   const [detail, setDetail] = useState<GraduateYearDetail | null | undefined>(undefined);
+  const [mergedStudents, setMergedStudents] = useState<StudentRow[]>([]);
+  const [studentCursor, setStudentCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    void apiGet<GraduateYearDetail>(`/api/graduates/${encodeURIComponent(year)}`)
+    void apiGet<GraduateYearDetail>(`/api/graduates/${encodeURIComponent(year)}`, {
+      cursor: 1,
+      limit: STUDENT_PAGE,
+    })
       .then((d) => {
-        if (!cancelled) setDetail(d);
+        if (!cancelled) {
+          setDetail(d);
+          setMergedStudents(appendHonorsStudents(d.students ?? []));
+          setStudentCursor(d.studentLastEvaluatedKey ?? null);
+        }
       })
       .catch(() => {
         if (!cancelled) setDetail(null);
@@ -100,7 +126,32 @@ function GraduatesYearCohortContent({ year, openLightbox }: CohortProps) {
     };
   }, [year]);
 
-  const groupedStudents = useMemo(() => groupStudentsBySpecialty(detail), [detail]);
+  const loadMoreStudents = useCallback(() => {
+    if (!studentCursor || loadingMore) return;
+    setLoadingMore(true);
+    void apiGet<GraduateYearDetail>(`/api/graduates/${encodeURIComponent(year)}`, {
+      cursor: 1,
+      limit: STUDENT_PAGE,
+      exclusiveStartKey: studentCursor,
+    })
+      .then((d) => {
+        setMergedStudents((prev) => [...prev, ...appendHonorsStudents(d.students ?? [])]);
+        setStudentCursor(d.studentLastEvaluatedKey ?? null);
+      })
+      .catch(() => {
+        setStudentCursor(null);
+      })
+      .finally(() => setLoadingMore(false));
+  }, [year, studentCursor, loadingMore]);
+
+  const groupedStudents = useMemo(() => {
+    if (!detail) return [];
+    const synthetic: GraduateYearDetail = {
+      ...detail,
+      students: mergedStudents,
+    };
+    return groupStudentsBySpecialty(synthetic);
+  }, [detail, mergedStudents]);
 
   if (detail === undefined) {
     return <GraduatesYearContentSkeleton />;
@@ -157,6 +208,13 @@ function GraduatesYearCohortContent({ year, openLightbox }: CohortProps) {
           ) : null}
         </section>
       ))}
+      {studentCursor ? (
+        <div className="graduates-students-load-more">
+          <button type="button" onClick={loadMoreStudents} disabled={loadingMore}>
+            {loadingMore ? "Завантаження…" : "Завантажити ще випускників"}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { HomePageSectionsSkeleton } from "../components/skeletons/PageSkeletons"
 import { Seo } from "../lib/seo";
 import { ROUTES } from "../router/paths";
 import { apiGet } from "../services/api";
-import type { GraduateYearSummary, TeacherDto, TeachersListResponse } from "../lib/apiTypes";
+import type { GraduateYearSummary, TeacherDto, TeachersCursorResponse } from "../lib/apiTypes";
 import "./HomePage.css";
 
 type Teacher = { id: number; slug: string; name: string; imageUrl?: string | null };
@@ -35,7 +35,7 @@ export default function HomePage() {
   useEffect(() => {
     let cancelled = false;
     void Promise.all([
-      apiGet<TeachersListResponse>("/api/teachers", { page: 1, limit: 12 }).then((r) =>
+      apiGet<TeachersCursorResponse>("/api/teachers", { cursor: 1, limit: 12 }).then((r) =>
         setTeachers(pickTeachers(r.teachers))
       ),
       apiGet<GraduateYearSummary[]>("/api/graduates/years").then((rows) =>
