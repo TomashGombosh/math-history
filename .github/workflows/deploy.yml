@@ -41,8 +41,15 @@
 #     ACM_CERTIFICATE_ARN — ACM cert in us-east-1 covering CLOUDFRONT_ALIAS (SNI for CloudFront)
 #     HTTP_API_EXECUTE_API_DOMAIN — HTTP API hostname only, e.g. abc.execute-api.eu-north-1.amazonaws.com
 #     CLOUDFRONT_ALIAS — alternate domain (production: math-history.afj-solution.com; stage: math-history-stage.afj-solution.com)
-#   Optional variables: CLOUDFRONT_S3_BUCKET (static site), CLOUDFRONT_S3_DATA_BUCKET (uploads for /images/*)
-#   Behaviors: /api/* and /sitemap.xml → API; /images/* → data bucket (key without images/ prefix); default → SPA
+#   Optional variable: CLOUDFRONT_S3_BUCKET (static site)
+#   Behaviors: /api/* and /sitemap.xml → API; default → SPA
+#
+# CloudFront assets (Terraform, separate distribution + hostname for S3 data bucket objects):
+#   Same secret AWS_CLOUDFRONT_ROLE_TO_ASSUME (needs CloudFront + S3 PutBucketPolicy on data bucket)
+#   Per-environment variables (required):
+#     ASSETS_ACM_CERTIFICATE_ARN — ACM in us-east-1 covering ASSETS_CLOUDFRONT_ALIAS (can match site cert if SANs include assets hosts)
+#     ASSETS_CLOUDFRONT_ALIAS — stage: assets-math-stage.afj-solution.com; prod: assets-math.afj-solution.com
+#   Optional: CLOUDFRONT_S3_DATA_BUCKET — overrides math-history-server-data-<stage|prod>
 
 name: Deploy application
 
@@ -310,7 +317,6 @@ jobs:
       TF_VAR_api_gateway_domain_name: ${{ vars.HTTP_API_EXECUTE_API_DOMAIN }}
       TF_VAR_cloudfront_alias: ${{ vars.CLOUDFRONT_ALIAS }}
       TF_VAR_s3_bucket_name: ${{ vars.CLOUDFRONT_S3_BUCKET }}
-      TF_VAR_s3_data_bucket_name: ${{ vars.CLOUDFRONT_S3_DATA_BUCKET }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -334,4 +340,39 @@ jobs:
           state-bucket: ${{ vars.TF_STATE_BUCKET }}
           lock-table: ${{ vars.TF_LOCK_TABLE }}
           state-key: cloudfront/${{ steps.target.outputs.tf_env }}.tfstate
+          tf-environment: ${{ steps.target.outputs.tf_env }}
+
+  deploy-cloudfront-assets:
+    name: Terraform apply (CloudFront assets)
+    runs-on: ubuntu-24.04
+    needs: [deploy-cloudfront]
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'stage' }}
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      TF_VAR_acm_certificate_arn: ${{ vars.ASSETS_ACM_CERTIFICATE_ARN }}
+      TF_VAR_assets_cloudfront_alias: ${{ vars.ASSETS_CLOUDFRONT_ALIAS }}
+      TF_VAR_s3_data_bucket_name: ${{ vars.CLOUDFRONT_S3_DATA_BUCKET }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Resolve target environment
+        id: target
+        run: |
+          if [ "${GITHUB_REF}" = "refs/heads/main" ]; then
+            echo "tf_env=prod" >> "$GITHUB_OUTPUT"
+          else
+            echo "tf_env=stage" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Apply CloudFront assets stack
+        uses: ./.github/actions/terraform-aws-apply
+        with:
+          working-directory: infra/cloudfront-assets
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_CLOUDFRONT_ROLE_TO_ASSUME }}
+          expected-aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
+          state-bucket: ${{ vars.TF_STATE_BUCKET }}
+          lock-table: ${{ vars.TF_LOCK_TABLE }}
+          state-key: cloudfront-assets/${{ steps.target.outputs.tf_env }}.tfstate
           tf-environment: ${{ steps.target.outputs.tf_env }}
