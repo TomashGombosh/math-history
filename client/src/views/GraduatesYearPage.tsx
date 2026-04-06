@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { LightboxGallery } from "../components/LightboxGallery";
-import { apiGet } from "../lib/api";
+import { ROUTES } from "../router/paths";
+import { apiGet } from "../services/api";
 import type { GraduateCohortImage, GraduateYearDetail, GraduateYearSummary } from "../lib/apiTypes";
 import { graduateImageOriginalUrl, graduateImageWebpUrl } from "../lib/graduateImages";
 import { Seo } from "../lib/seo";
@@ -108,7 +109,7 @@ export default function GraduatesYearPage() {
       <Seo
         title={`Випуск ${year} року`}
         description={`Випуск ${year} року студентів-математиків УжНУ.`}
-        path={`/graduates/${year}`}
+        path={ROUTES.graduatesYear(year)}
       />
       <h1>Випуск {year} року</h1>
       <p className="page-intro">
@@ -120,7 +121,7 @@ export default function GraduatesYearPage() {
         {years.map((y) => (
           <Link
             key={y.year}
-            to={`/graduates/${y.year}`}
+            to={ROUTES.graduatesYear(y.year)}
             className={`year-cell ${String(y.year) === String(year) ? "active" : ""}`}
           >
             {y.year}

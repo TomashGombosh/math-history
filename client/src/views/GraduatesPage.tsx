@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Seo } from "../lib/seo";
-import { apiGet } from "../lib/api";
+import { ROUTES } from "../router/paths";
+import { apiGet } from "../services/api";
 import type { GraduateYearSummary } from "../lib/apiTypes";
 import "./GraduatesPage.css";
 
@@ -26,11 +27,11 @@ export default function GraduatesPage() {
 
   return (
     <div className="graduates-page">
-      <Seo title="Роки випуску" description="Роки випуску студентів-математиків УжНУ." path="/graduates" />
+      <Seo title="Роки випуску" description="Роки випуску студентів-математиків УжНУ." path={ROUTES.graduates} />
       <h1>Роки випуску студентів-математиків УжНУ</h1>
       <div className="years-grid">
         {years.map((item) => (
-          <Link key={item.year} to={`/graduates/${item.year}`} className="year-card">
+          <Link key={item.year} to={ROUTES.graduatesYear(item.year)} className="year-card">
             <div className="year-card__year">{item.year}</div>
             <div className="year-card__stats">
               <div>К-ть випускників: {item.totalStudents}</div>

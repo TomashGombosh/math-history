@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { ROUTES } from "../router/paths";
 import { useAuth } from "../state/AuthContext";
 import { AdminNav } from "./admin/AdminNav";
 import "./MainHeader.css";
 
 export function MainHeader() {
   const route = useLocation();
-  const { isAuthed } = useAuth();
+  const { isAuthed, authReady } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -29,18 +30,18 @@ export function MainHeader() {
           </div>
         </div>
         <nav className="main-nav main-nav--desktop">
-          <Link to="/" className={`nav-link ${route.pathname === "/" ? "active" : ""}`}>
+          <Link to={ROUTES.home} className={`nav-link ${route.pathname === ROUTES.home ? "active" : ""}`}>
             Головна
           </Link>
           <Link
-            to="/teachers"
-            className={`nav-link ${route.pathname.startsWith("/teachers") ? "active" : ""}`}
+            to={ROUTES.teachers}
+            className={`nav-link ${route.pathname.startsWith(ROUTES.teachers) ? "active" : ""}`}
           >
             Викладачі
           </Link>
           <Link
-            to="/graduates"
-            className={`nav-link ${route.pathname.startsWith("/graduates") ? "active" : ""}`}
+            to={ROUTES.graduates}
+            className={`nav-link ${route.pathname.startsWith(ROUTES.graduates) ? "active" : ""}`}
           >
             Випускники
           </Link>
@@ -60,22 +61,22 @@ export function MainHeader() {
       {isMobileMenuOpen ? (
         <nav className="main-nav main-nav--mobile">
           <Link
-            to="/"
-            className={`nav-link ${route.pathname === "/" ? "active" : ""}`}
+            to={ROUTES.home}
+            className={`nav-link ${route.pathname === ROUTES.home ? "active" : ""}`}
             onClick={() => setIsMobileMenuOpen(false)}
           >
             Головна
           </Link>
           <Link
-            to="/teachers"
-            className={`nav-link ${route.pathname.startsWith("/teachers") ? "active" : ""}`}
+            to={ROUTES.teachers}
+            className={`nav-link ${route.pathname.startsWith(ROUTES.teachers) ? "active" : ""}`}
             onClick={() => setIsMobileMenuOpen(false)}
           >
             Викладачі
           </Link>
           <Link
-            to="/graduates"
-            className={`nav-link ${route.pathname.startsWith("/graduates") ? "active" : ""}`}
+            to={ROUTES.graduates}
+            className={`nav-link ${route.pathname.startsWith(ROUTES.graduates) ? "active" : ""}`}
             onClick={() => setIsMobileMenuOpen(false)}
           >
             Випускники
@@ -83,7 +84,7 @@ export function MainHeader() {
         </nav>
       ) : null}
 
-      {isAuthed ? <AdminNav /> : null}
+      {authReady && isAuthed ? <AdminNav /> : null}
     </div>
   );
 }

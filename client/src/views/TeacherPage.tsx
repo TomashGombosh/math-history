@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Seo } from "../lib/seo";
-import { apiGet } from "../lib/api";
+import { ROUTES } from "../router/paths";
+import { apiGet } from "../services/api";
 import type { LayoutConfigResponse, TeacherDto } from "../lib/apiTypes";
 import {
   normalizeTeacherPageLayout,
@@ -60,7 +61,11 @@ function TeacherProfile({ slug }: { slug: string }) {
 
   return (
     <div className="teacher-page">
-      <Seo title={`${teacher.name} — викладач`} description="Сторінка викладача." path={`/teacher/${slug}`} />
+      <Seo
+        title={`${teacher.name} — викладач`}
+        description="Сторінка викладача."
+        path={ROUTES.teacherSlug(slug)}
+      />
       <div className="header">
         <div className="photo">{teacher.imageUrl ? <img src={teacher.imageUrl} alt={teacher.name} /> : null}</div>
         <div className="info">
@@ -108,7 +113,7 @@ function TeacherProfile({ slug }: { slug: string }) {
         return null;
       })}
       <div className="back-link">
-        <Link to="/teachers">← Повернутися до списку</Link>
+        <Link to={ROUTES.teachers}>← Повернутися до списку</Link>
       </div>
     </div>
   );

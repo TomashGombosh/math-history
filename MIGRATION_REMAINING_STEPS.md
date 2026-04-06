@@ -105,7 +105,7 @@ This document lists **gaps** versus `MIGRATION_DAY_BY_DAY_PLAN.md` and the old s
 
 | Area | Status | Action |
 |------|--------|--------|
-| Cognito login + Bearer on API calls | Missing | §1 |
+| Cognito login + Bearer on API calls | Done | §1 (SRP + `services/api` `*Authed`; legacy `server/` JWT gated) |
 | Admin teachers/graduates/layout UIs | Missing | §2 |
 | Graduate year photos + lightbox | Done | §3 |
 | Sitemap XML | Missing | §4 |

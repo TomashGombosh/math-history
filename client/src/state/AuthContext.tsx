@@ -1,51 +1,55 @@
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { cognitoSignInAdmin, cognitoSignOut, loadPersistedAdminSession } from "../lib/cognito-auth";
+import { isCognitoConfigured } from "../lib/cognito-config";
 
 type AuthContextValue = {
-  token: string | null;
+  /** Cognito admin session (ID token present + admin claims). */
   isAuthed: boolean;
-  setToken: (value: string | null) => void;
-  logout: () => void;
+  /** Initial session probe finished (avoid redirect flash). */
+  authReady: boolean;
+  loginWithEmailPassword: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const AUTH_COOKIE_KEY = "authToken";
-
-function readCookie(name: string) {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match ? decodeURIComponent(match[1]) : null;
-}
-
-function writeCookie(name: string, value: string | null) {
-  if (typeof document === "undefined") return;
-  if (!value) {
-    document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax`;
-    return;
-  }
-
-  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; SameSite=Lax`;
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [token, setTokenState] = useState<string | null>(() =>
-    readCookie(AUTH_COOKIE_KEY)
-  );
+  const [isAuthed, setIsAuthed] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        if (!isCognitoConfigured()) {
+          setIsAuthed(false);
+          return;
+        }
+        const ok = await loadPersistedAdminSession();
+        setIsAuthed(ok);
+      } finally {
+        setAuthReady(true);
+      }
+    })();
+  }, []);
+
+  const loginWithEmailPassword = useCallback(async (email: string, password: string) => {
+    await cognitoSignInAdmin(email, password);
+    setIsAuthed(true);
+  }, []);
+
+  const logout = useCallback(async () => {
+    await cognitoSignOut();
+    setIsAuthed(false);
+  }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
-      token,
-      isAuthed: Boolean(token),
-      setToken: (nextToken) => {
-        writeCookie(AUTH_COOKIE_KEY, nextToken);
-        setTokenState(nextToken);
-      },
-      logout: () => {
-        writeCookie(AUTH_COOKIE_KEY, null);
-        setTokenState(null);
-      },
+      isAuthed,
+      authReady,
+      loginWithEmailPassword,
+      logout,
     }),
-    [token]
+    [isAuthed, authReady, loginWithEmailPassword, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

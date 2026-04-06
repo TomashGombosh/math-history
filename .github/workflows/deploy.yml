@@ -19,7 +19,7 @@
 #   Per-environment secrets: AWS_SERVERLESS_ROLE_TO_ASSUME, AWS_ACCOUNT_ID
 #   Optional secret: SERVERLESS_ACCESS_KEY — if Serverless Framework org/dashboard requires it for deploy
 #   Per-environment variables (recommended):
-#     COGNITO_JWT_ISSUER, COGNITO_JWT_AUDIENCE — HTTP API JWT authorizer (match Terraform Cognito outputs)
+#     COGNITO_JWT_ISSUER, COGNITO_JWT_AUDIENCE — HTTP API JWT authorizer (per-environment secrets; match Terraform Cognito outputs)
 #     SECURITY_GROUP_ID, SUBNET_ID — Lambda VPC (required by server_v2/serverless.yml)
 #     CORS_ORIGIN — optional browser origin for API CORS
 #     SITE_URL — same canonical public origin as VITE_SITE_URL (https://CLOUDFRONT_ALIAS, no trailing slash).
@@ -32,6 +32,7 @@
 #   s3:DeleteObject, s3:ListBucket on arn:aws:s3:::math-history-client-static-* (and objects).
 #   Per-environment secrets: AWS_SERVERLESS_ROLE_TO_ASSUME, AWS_ACCOUNT_ID, SERVERLESS_ACCESS_KEY (optional)
 #   Per-environment variables (recommended): VITE_API_URL, VITE_SITE_URL — baked into the Vite build
+#     VITE_COGNITO_USER_POOL_ID, VITE_COGNITO_USER_POOL_CLIENT_ID — baked into Vite build (per-environment secrets; same pool / app client as issuer / audience above)
 #   After build, CI writes dist/robots.txt: stage = Disallow: /; prod = Allow public + Sitemap from VITE_SITE_URL
 #
 # CloudFront (Terraform, after Serverless API + client bucket/sync):
@@ -212,8 +213,8 @@ jobs:
         env:
           DYNAMODB_TABLE_NAME: math-history-server-ddb-${{ steps.target.outputs.tf_env }}
           S3_DATA_BUCKET: math-history-server-data-${{ steps.target.outputs.tf_env }}
-          COGNITO_JWT_ISSUER: ${{ vars.COGNITO_JWT_ISSUER }}
-          COGNITO_JWT_AUDIENCE: ${{ vars.COGNITO_JWT_AUDIENCE }}
+          COGNITO_JWT_ISSUER: ${{ secrets.COGNITO_JWT_ISSUER }}
+          COGNITO_JWT_AUDIENCE: ${{ secrets.COGNITO_JWT_AUDIENCE }}
           NODE_ENV: ${{ steps.target.outputs.node_env }}
           SECURITY_GROUP_ID: ${{ vars.SECURITY_GROUP_ID }}
           SUBNET_ID: ${{ vars.SUBNET_ID }}
@@ -276,6 +277,8 @@ jobs:
         env:
           VITE_API_URL: ${{ vars.VITE_API_URL }}
           VITE_SITE_URL: ${{ vars.VITE_SITE_URL }}
+          VITE_COGNITO_USER_POOL_ID: ${{ secrets.VITE_COGNITO_USER_POOL_ID }}
+          VITE_COGNITO_USER_POOL_CLIENT_ID: ${{ secrets.VITE_COGNITO_USER_POOL_CLIENT_ID }}
         run: npm run build
 
       - name: Write robots.txt for environment
