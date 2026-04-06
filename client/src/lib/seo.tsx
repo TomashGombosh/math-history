@@ -1,59 +1,73 @@
 import { Helmet } from "react-helmet-async";
+import { getSiteUrl, SEO_SITE_NAME } from "./seoHelpers";
 
-export type BreadcrumbSeoItem = {
-  name: string;
-  /** App path starting with `/` (e.g. `/graduates`). */
-  path: string;
-};
+function escapeJsonForScript(json: string): string {
+  return json.replace(/</g, "\\u003c");
+}
 
 type SeoProps = {
   title: string;
   description: string;
   path: string;
-  /** Optional BreadcrumbList JSON-LD (matches legacy Nuxt `useHead` on graduate year). */
-  breadcrumbItems?: BreadcrumbSeoItem[];
+  /** Indexed by default; use noindex for login, errors, or non-public screens. */
+  robots?: string;
+  omitCanonical?: boolean;
+  ogType?: "website" | "article";
+  ogImage?: string;
+  twitterCard?: "summary" | "summary_large_image";
+  jsonLd?: object | object[];
 };
 
-function getSiteUrl() {
-  if (typeof window !== "undefined") {
-    return import.meta.env.VITE_SITE_URL || window.location.origin;
-  }
-  return import.meta.env.VITE_SITE_URL || "http://localhost:5173";
+function normalizePathForCanonical(path: string): string {
+  if (!path || path === "/") return "";
+  const withSlash = path.startsWith("/") ? path : `/${path}`;
+  return withSlash.replace(/\/+$/, "") || "";
 }
 
-export function Seo({ title, description, path, breadcrumbItems }: SeoProps) {
-  const siteUrl = getSiteUrl().replace(/\/$/, "");
-  const canonical = `${siteUrl}${path}`;
+export function Seo({
+  title,
+  description,
+  path,
+  robots,
+  omitCanonical,
+  ogType = "website",
+  ogImage,
+  twitterCard = "summary_large_image",
+  jsonLd,
+}: SeoProps) {
+  const siteUrl = getSiteUrl();
+  const pathPart = normalizePathForCanonical(path);
+  const canonical = `${siteUrl}${pathPart === "" ? "/" : pathPart}`;
 
-  const breadcrumbJsonLd =
-    breadcrumbItems && breadcrumbItems.length > 0
-      ? {
-          "@context": "https://schema.org",
-          "@type": "BreadcrumbList",
-          itemListElement: breadcrumbItems.map((item, i) => ({
-            "@type": "ListItem",
-            position: i + 1,
-            name: item.name,
-            item: `${siteUrl}${item.path.startsWith("/") ? item.path : `/${item.path}`}`,
-          })),
-        }
-      : null;
+  const fullTitle = title.includes(SEO_SITE_NAME) ? title : `${title} | ${SEO_SITE_NAME}`;
+
+  const jsonLdBlocks = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
 
   return (
-    <Helmet>
-      <title>{title}</title>
+    <Helmet htmlAttributes={{ lang: "uk" }}>
+      <title>{fullTitle}</title>
       <meta name="description" content={description} />
-      <link rel="canonical" href={canonical} />
-      <meta property="og:title" content={title} />
+      {robots ? <meta name="robots" content={robots} /> : null}
+      {!omitCanonical ? <link rel="canonical" href={canonical} /> : null}
+
+      <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={description} />
-      <meta property="og:type" content="website" />
-      <meta property="og:url" content={canonical} />
-      <meta property="twitter:card" content="summary_large_image" />
-      <meta property="twitter:title" content={title} />
-      <meta property="twitter:description" content={description} />
-      {breadcrumbJsonLd ? (
-        <script type="application/ld+json">{JSON.stringify(breadcrumbJsonLd)}</script>
-      ) : null}
+      <meta property="og:type" content={ogType} />
+      <meta property="og:locale" content="uk_UA" />
+      <meta property="og:site_name" content={SEO_SITE_NAME} />
+      {!omitCanonical ? <meta property="og:url" content={canonical} /> : null}
+      {ogImage ? <meta property="og:image" content={ogImage} /> : null}
+
+      <meta name="twitter:card" content={twitterCard} />
+      <meta name="twitter:title" content={fullTitle} />
+      <meta name="twitter:description" content={description} />
+      {ogImage ? <meta name="twitter:image" content={ogImage} /> : null}
+
+      {jsonLdBlocks.map((block, i) => (
+        <script key={i} type="application/ld+json">
+          {escapeJsonForScript(JSON.stringify(block))}
+        </script>
+      ))}
     </Helmet>
   );
 }

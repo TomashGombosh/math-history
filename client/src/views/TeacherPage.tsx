@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Seo } from "../lib/seo";
+import {
+  absoluteUrlForSeo,
+  breadcrumbJsonLd,
+  buildTeacherMetaDescription,
+  getSiteUrl,
+  teacherPersonJsonLd,
+} from "../lib/seoHelpers";
 import { ROUTES } from "../router/paths";
 import { apiGet } from "../services/api";
 import type { LayoutConfigResponse, TeacherDto } from "../lib/apiTypes";
@@ -60,12 +67,28 @@ function TeacherProfile({ slug }: { slug: string }) {
     return <div className="teacher-page">Викладача не знайдено</div>;
   }
 
+  const siteUrl = getSiteUrl();
+  const pagePath = ROUTES.teacherSlug(slug);
+  const pageUrl = `${siteUrl}${pagePath}`;
+  const metaDescription = buildTeacherMetaDescription(teacher);
+  const ogImage = absoluteUrlForSeo(siteUrl, teacher.imageUrl);
+
   return (
     <div className="teacher-page">
       <Seo
         title={`${teacher.name} — викладач`}
-        description="Сторінка викладача."
-        path={ROUTES.teacherSlug(slug)}
+        description={metaDescription}
+        path={pagePath}
+        ogType="article"
+        ogImage={ogImage}
+        jsonLd={[
+          breadcrumbJsonLd(siteUrl, [
+            { name: "Головна", path: ROUTES.home },
+            { name: "Викладачі", path: ROUTES.teachers },
+            { name: teacher.name, path: pagePath },
+          ]),
+          teacherPersonJsonLd(pageUrl, teacher, ogImage),
+        ]}
       />
       <div className="header">
         <div className="photo">{teacher.imageUrl ? <img src={teacher.imageUrl} alt={teacher.name} /> : null}</div>
