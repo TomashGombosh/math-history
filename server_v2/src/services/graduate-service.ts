@@ -1,6 +1,7 @@
 import { PK, graduateSortKey } from '@lib/dynamo-keys';
 import { logInfo, type CorrelationIds } from '@lib/lambda-log';
 import { deleteItem, getItem, putItem, queryItems } from '@lib/dynamo-operations';
+import { encodeExclusiveStartKey } from '@lib/pagination-cursor';
 import type { GraduateCreateBody } from '@models/graduate';
 import { nextGraduateCohortId } from '@services/counters';
 
@@ -18,6 +19,26 @@ export interface GraduateItem extends Record<string, unknown> {
 	totalWithHonours: number;
 	createdAt?: string;
 	updatedAt?: string;
+}
+
+/** All cohort rows for a single graduation year (sk prefix `Y#year#`). */
+export async function queryAllGraduateItemsForYear(yearNum: number): Promise<GraduateItem[]> {
+	const out: GraduateItem[] = [];
+	let exclusiveStartKey: Record<string, unknown> | undefined;
+	const prefix = `Y#${yearNum}#`;
+	do {
+		const { items, lastEvaluatedKey } = await queryItems<GraduateItem>({
+			KeyConditionExpression: 'pk = :pk AND begins_with(sk, :pfx)',
+			ExpressionAttributeValues: {
+				':pk': PK.GRADUATE,
+				':pfx': prefix,
+			},
+			ExclusiveStartKey: exclusiveStartKey,
+		});
+		out.push(...items);
+		exclusiveStartKey = lastEvaluatedKey;
+	} while (exclusiveStartKey);
+	return out.sort((a, b) => a.id - b.id);
 }
 
 async function queryAllGraduateItems(correlation?: CorrelationIds): Promise<GraduateItem[]> {
@@ -79,7 +100,49 @@ export async function listGraduateRows(
 	return rows;
 }
 
-export async function getGraduateYearDetail(yearNum: number): Promise<{
+/** One DynamoDB query page of cohort rows; optional year filter via sk prefix. */
+export async function listGraduateRowsPage(
+	yearFilter: number | null,
+	params: { limit: number; exclusiveStartKey?: Record<string, unknown> },
+	correlation?: CorrelationIds,
+): Promise<{ rows: GraduateItem[]; lastEvaluatedKey?: Record<string, unknown> }> {
+	const t0 = Date.now();
+	const base = { ...correlation, service: 'math-history-server' as const };
+	const prefix =
+		yearFilter && !Number.isNaN(yearFilter) ? `Y#${yearFilter}#` : 'Y#';
+	logInfo('graduate:listPage:start', {
+		...base,
+		yearFilter,
+		limit: params.limit,
+		durationMs: 0,
+	});
+	const { items, lastEvaluatedKey } = await queryItems<GraduateItem>({
+		KeyConditionExpression: 'pk = :pk AND begins_with(sk, :pfx)',
+		ExpressionAttributeValues: {
+			':pk': PK.GRADUATE,
+			':pfx': prefix,
+		},
+		Limit: params.limit,
+		ExclusiveStartKey: params.exclusiveStartKey,
+	});
+	logInfo('graduate:listPage:done', {
+		...base,
+		itemCount: items.length,
+		hasMore: Boolean(lastEvaluatedKey),
+		durationMs: Date.now() - t0,
+	});
+	const rows = items.sort((a, b) => {
+		if (a.year !== b.year) return a.year - b.year;
+		if ((a.number ?? 0) !== (b.number ?? 0)) return (a.number ?? 0) - (b.number ?? 0);
+		return a.id - b.id;
+	});
+	return { rows, lastEvaluatedKey };
+}
+
+export async function getGraduateYearDetail(
+	yearNum: number,
+	studentPage?: { limit: number; offset: number },
+): Promise<{
 	year: number;
 	title: string;
 	images: unknown[];
@@ -91,8 +154,10 @@ export async function getGraduateYearDetail(yearNum: number): Promise<{
 		section: string;
 		honorsDegree: boolean;
 	}>;
+	studentTotal?: number;
+	studentLastEvaluatedKey?: string;
 }> {
-	const cohorts = await listGraduateRows(yearNum);
+	const cohorts = await queryAllGraduateItemsForYear(yearNum);
 	if (!cohorts.length) {
 		return {
 			year: yearNum,
@@ -142,11 +207,28 @@ export async function getGraduateYearDetail(yearNum: number): Promise<{
 		}
 	}
 
+	if (!studentPage) {
+		return {
+			year: yearNum,
+			title: String(mainTitle),
+			images,
+			students: allStudents,
+		};
+	}
+
+	const { limit, offset } = studentPage;
+	const studentTotal = allStudents.length;
+	const slice = allStudents.slice(offset, offset + limit);
+	const nextOffset = offset + slice.length;
+	const studentLastEvaluatedKey = nextOffset < studentTotal ? encodeExclusiveStartKey({ offset: nextOffset }) : undefined;
+
 	return {
 		year: yearNum,
 		title: String(mainTitle),
 		images,
-		students: allStudents,
+		students: slice,
+		studentTotal,
+		studentLastEvaluatedKey,
 	};
 }
 
@@ -333,8 +415,7 @@ export async function createGraduate(body: GraduateCreateBody): Promise<{ ok: bo
 }
 
 export async function getCohortsForYear(yearNum: number): Promise<GraduateItem[]> {
-	const all = await queryAllGraduateItems();
-	return all.filter((g) => g.year === yearNum).sort((a, b) => a.id - b.id);
+	return queryAllGraduateItemsForYear(yearNum);
 }
 
 export async function getCohortByYear(yearNum: number): Promise<GraduateItem | null> {

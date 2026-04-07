@@ -1,34 +1,25 @@
 # Migration — remaining steps
 
-This document lists **gaps** versus `MIGRATION_DAY_BY_DAY_PLAN.md` and the old stack (`server/` Nuxt API, `app/` Vue). For each item: **what is missing** and **what to do**.
+This document tracks **status** versus `MIGRATION_DAY_BY_DAY_PLAN.md` and the old stack (`server/` Nuxt API, `app/` Vue): what is **done**, what is **still missing**, and what to do next.
 
 ---
 
 ## 1. Authentication — client and API contract
 
-**Missing:** The React app still calls `POST /api/auth/login` with username/password and stores a token in a cookie. `server_v2` has no such route; protected APIs expect **Cognito JWT** (HTTP API authorizer + `admin-auth`).
+**Done (React + `server_v2`):** Admin login uses **AWS Amplify Auth** (SRP) in the browser (`client/src/lib/cognito-auth.ts`, `client/src/lib/cognito-config.ts`). `client/src/lib/api.ts` uses `fetchAuthSession` for the Cognito **ID token** and sends `Authorization: Bearer <token>` on mutating routes via `client/src/services/api.ts` (`*Authed` helpers). Admin group checks align with Cognito claims (`cognito:groups` / admin) as enforced client-side and by the API authorizer.
 
-**What to do:**
+**Optional follow-ups:**
 
-- Replace the login flow with **Cognito** (Hosted UI or `InitiateAuth` / SRP in the browser using the AWS Amplify Auth SDK or a thin wrapper).
-- After login, obtain **ID or access JWT** and send it on admin/API calls as `Authorization: Bearer <token>` (extend `client/src/lib/api.ts` helpers for authenticated requests).
-- Align **admin group / role** checks with Cognito claims (`cognito:groups` or custom claims) and what `server_v2` `admin-auth` expects.
-- Remove or gate any dead code paths that assume the old custom JWT from `server/utils/auth.js`.
-- Document required env vars for the client (Cognito domain, client id, region, redirect URIs).
+- Remove or gate any remaining dead paths that assume the old custom JWT from `server/utils/auth.js` (if any).
+- Keep client env documentation in sync (pool id, client id, region — see Vite env / `.env.example` patterns in `client/`).
 
 ---
 
 ## 2. Admin UI — full parity
 
-**Missing:** Under `client/src/router/routes.tsx`, routes such as `/admin/teachers`, `/admin/teachers/create`, `/admin/teachers/:id/edit`, `/admin/teachers/layout`, `/admin/graduates`, etc. render **`AdminPlaceholderPage`** only. The old Vue app had real forms and lists (`AdminTeacher*`, `AdminGraduate*`, `AdminLayoutSettings.vue`, etc.).
+**Done (routes):** `client/src/router/routes.tsx` wires real pages (not placeholders): teachers list/create/edit, layout settings, graduates list/create/year edit, with shared admin patterns and **authenticated** API calls.
 
-**What to do:**
-
-- Port **teachers** admin: list, create, edit, delete, publications, image upload UX (using presigned PUT + stored URLs).
-- Port **graduates** admin: list by year, create year, edit year, merge/replace photos, specialty/section grouping consistent with API.
-- Port **layout settings** UI and wire to `GET/PUT /api/layout`.
-- Reuse shared patterns (loading/error states, validation) from the old components where behavior is known.
-- Ensure every mutating action uses **authenticated** `fetch` with the Cognito token.
+**Verify as needed:** Spot-check behavior vs legacy Vue (`AdminTeacher*`, `AdminGraduate*`, `AdminLayoutSettings.vue`) for edge cases; `AdminPlaceholderPage` remains only for tests, not production routes.
 
 ---
 
@@ -42,13 +33,9 @@ This document lists **gaps** versus `MIGRATION_DAY_BY_DAY_PLAN.md` and the old s
 
 ## 4. Sitemap and SEO endpoints
 
-**Missing:** Old `server/routes/sitemap.xml.get.js` generated XML from teachers and graduates. `server_v2` has no equivalent **sitemap** route (plan Day 13).
+**Done (`server_v2`):** Dynamic **`GET /sitemap.xml`** is implemented (e.g. `server_v2/src/modules/sitemap.xml/get/`, `server_v2/src/services/sitemap-service.ts`), with public URLs for home, teachers, teacher slugs, graduates, and graduate years. **`robots.txt`** should reference the sitemap (e.g. `client/public/robots.txt`); CloudFront can route `/sitemap.xml` to the API (see `infra/cloudfront/main.tf`).
 
-**What to do:**
-
-- Implement `GET` **sitemap** (XML), either as a Lambda route (e.g. `/sitemap.xml` or `/api/sitemap`) or as a **static build step** uploaded to S3 — pick one and keep URLs stable for search engines.
-- Include the same URL set as before: home, teachers list, each teacher slug, graduates list, each year, and correct `lastmod` if available from Dynamo.
-- Point `robots.txt` to the sitemap URL if needed.
+**Optional:** Tune `lastmod` sources if you want them stricter than current Dynamo-derived data.
 
 ---
 
@@ -75,12 +62,13 @@ This document lists **gaps** versus `MIGRATION_DAY_BY_DAY_PLAN.md` and the old s
 
 ## 7. Data and layout migration
 
-**Missing (verify):** Plan Day 10 — migration from `layoutConfig.json` into DynamoDB (or S3) and validation that production data matches legacy.
+**Status:** Layout is stored in DynamoDB (`pk=CONFIG`, `sk=LAYOUT`, `payload` matches legacy `layoutConfig.json`). Import script: `server_v2/scripts/load-layout-dynamodb.mjs` with `server_v2/migration/data/layout-seed.json` (kept in sync with repo-root `layoutConfig.json`). Manual workflow **Migrate DynamoDB** can load `layout` alone or with `all`.
 
 **What to do:**
 
-- Confirm **layout** documents were imported and `GET /api/layout` matches admin expectations.
-- Keep **graduates/teachers** migration scripts (`server/scripts/`, `server_v2/migration/`, CI `migrate-dynamodb`) documented and run in the right order for each environment.
+- After importing teachers/graduates/layout for an environment, confirm **`GET /api/layout`** returns the expected `headerFields` / `sections` (admin and public teacher page).
+- Run **graduates** then **teachers** then **layout** (or `all`) via `.github/workflows/migrate-dynamodb.yml` in order; `layout` overwrites `CONFIG/LAYOUT` if you need to reset from seed.
+- Keep **graduates/teachers** migration scripts (`server/scripts/` for legacy SQL/XML, `server_v2/migration/`, CI `migrate-dynamodb`) and run in the right order per environment.
 - After cutover, run **spot checks** (counts, random records, image URLs).
 
 ---
@@ -99,13 +87,13 @@ This document lists **gaps** versus `MIGRATION_DAY_BY_DAY_PLAN.md` and the old s
 
 ## Summary checklist
 
-| Area | Status | Action |
+| Area | Status | Notes |
 |------|--------|--------|
-| Cognito login + Bearer on API calls | Done | §1 (SRP + `services/api` `*Authed`; legacy `server/` JWT gated) |
-| Admin teachers/graduates/layout UIs | Missing | §2 |
-| Graduate year photos + lightbox | Done | §3 |
-| Sitemap XML | Missing | §4 |
-| Webp/thumb pipeline after upload | Done (S3 → Lambda + sharp) | §5, `server_v2/docs/IMAGE_UPLOAD_DERIVATIVES.md` |
-| Cron/queue deployment | Stub | §6 |
-| Layout/data verification | Verify | §7 |
-| Deploy + QA + cutover | Process | §8 |
+| Cognito login + Bearer on API calls | **Done** | §1 — Amplify SRP, `api.ts` + `*Authed` |
+| Admin teachers/graduates/layout UIs | **Done** | §2 — real routes/pages; optional parity QA vs legacy |
+| Graduate year photos + lightbox | **Done** | §3 |
+| Sitemap XML | **Done** | §4 — `GET /sitemap.xml` in `server_v2`, robots / CloudFront |
+| Webp/thumb pipeline after upload | **Done** | §5 — S3 → Lambda + sharp; `server_v2/docs/IMAGE_UPLOAD_DERIVATIVES.md` |
+| Cron/queue deployment | **Stub** | §6 |
+| Layout/data verification | **Verify** (script + CI) | §7 — `load-layout-dynamodb.mjs` / migrate workflow; spot-check `GET /api/layout` |
+| Deploy + QA + cutover | **Process** | §8 |

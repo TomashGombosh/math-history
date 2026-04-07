@@ -143,6 +143,9 @@ functions:
           path: /api/graduates
           method: GET
       - httpApi:
+          path: /api/gratitudes
+          method: GET
+      - httpApi:
           path: /api/graduates/{year}
           method: GET
       - httpApi:

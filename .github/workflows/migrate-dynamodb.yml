@@ -1,4 +1,5 @@
 # Manual data migration: loads server_v2/migration/data/*.json into the app DynamoDB table.
+# Layout: migration/data/layout-seed.json → pk=CONFIG, sk=LAYOUT (GET /api/layout payload).
 # Branch selects AWS target (same mapping as deploy.yml):
 #   development → GitHub environment "stage", table math-history-server-ddb-stage
 #   main        → GitHub environment "production", table math-history-server-ddb-prod
@@ -20,6 +21,7 @@ on:
           - all
           - teachers
           - graduates
+          - layout
         default: all
 
 concurrency:
@@ -104,4 +106,14 @@ jobs:
         run: |
           node scripts/load-graduates-dynamodb.mjs \
             migration/data/graduates-seed.json \
+            "${{ steps.target.outputs.table_name }}"
+
+      - name: Load layout config (CONFIG/LAYOUT)
+        if: ${{ inputs.migration == 'all' || inputs.migration == 'layout' }}
+        working-directory: server_v2
+        env:
+          AWS_REGION: ${{ env.AWS_REGION }}
+        run: |
+          node scripts/load-layout-dynamodb.mjs \
+            migration/data/layout-seed.json \
             "${{ steps.target.outputs.table_name }}"
