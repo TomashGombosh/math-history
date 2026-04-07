@@ -17,6 +17,7 @@
     "seed:teachers:local": "bash scripts/load-teachers-local.sh",
     "seed:graduates:generate": "node scripts/generate-graduates-seed.mjs",
     "seed:graduates:local": "bash scripts/load-graduates-local.sh",
+    "seed:layout:local": "bash scripts/load-layout-local.sh",
     "serve": "npx sls offline start --host 0.0.0.0 --region eu-north-1",
     "dev": "npx concurrently -k -n BUILD,SLS 'npm:build:watch' 'npm:serve'"
   },
