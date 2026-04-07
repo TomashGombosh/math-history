@@ -2,6 +2,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { webpBasenameFromOriginalName } from '@lib/image-derivative-keys';
 import { getS3BucketName, getS3Client } from '@lib/s3-client';
 
 const PRESIGN_EXPIRES_SEC = 3600;
@@ -49,8 +50,10 @@ export interface PresignImageUploadResult {
 	s3: { bucket: string; key: string };
 	/** Store on teacher/graduate records after upload succeeds */
 	imageUrl: string;
-	/** Predicted webp path (object exists only if you add processing or a second upload) */
+	/** Predicted WebP path (filled asynchronously by S3-triggered Lambda after PUT completes) */
 	webpUrl: string;
+	/** Predicted thumb WebP path (same pipeline as `webpUrl`) */
+	thumbUrl: string;
 }
 
 export async function createPresignedImageUpload(input: PresignImageUploadInput): Promise<PresignImageUploadResult> {
@@ -65,30 +68,35 @@ export async function createPresignedImageUpload(input: PresignImageUploadInput)
 	let key: string;
 	let imageUrl: string;
 	let webpUrl: string;
+	let thumbUrl: string;
 
 	if (scope === 'teacher') {
 		const id = randomUUID();
 		const fileName = `${id}${ext}`;
 		const webpName = `${id}.webp`;
 		key = `teachers/${fileName}`;
-		imageUrl = publicUrlForTeacherObjectKey(key);
-		webpUrl = publicUrlForTeacherObjectKey(`teachers/${webpName}`);
+		imageUrl = publicUrlForTeacherObjectKey(`teachers/${fileName}`);
+		webpUrl = publicUrlForTeacherObjectKey(`teachers-webp/${webpName}`);
+		thumbUrl = publicUrlForTeacherObjectKey(`teachers-thumbs-webp/${webpName}`);
 	} else {
 		const fileName = `${Date.now()}${ext}`;
-		const webpName = fileName.replace(/\.(jpg|jpeg|png|webp)$/i, '.webp');
+		const webpName = webpBasenameFromOriginalName(fileName);
 
 		const sub = subDirsForScope(scope);
 
 		if (sub.length) {
 			const imgSegs = [...sub, 'images'];
 			const webpSegs = [...sub, 'images-webp'];
+			const thumbSegs = [...sub, 'images-thumbs-webp'];
 			key = `${imgSegs.join('/')}/${fileName}`;
 			imageUrl = `/${imgSegs.join('/')}/${fileName}`;
 			webpUrl = `/${webpSegs.join('/')}/${webpName}`;
+			thumbUrl = `/${thumbSegs.join('/')}/${webpName}`;
 		} else {
 			key = `images/${fileName}`;
 			imageUrl = `/images/${fileName}`;
 			webpUrl = `/images-webp/${webpName}`;
+			thumbUrl = `/images-thumbs-webp/${webpName}`;
 		}
 	}
 
@@ -109,5 +117,6 @@ export async function createPresignedImageUpload(input: PresignImageUploadInput)
 		s3: { bucket, key },
 		imageUrl,
 		webpUrl,
+		thumbUrl,
 	};
 }

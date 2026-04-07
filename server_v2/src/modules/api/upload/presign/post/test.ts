@@ -38,12 +38,16 @@ module.exports = (wrapped: any, expect: any, requestContext: any) =>
 				headers: { 'Content-Type': string };
 				s3: { bucket: string; key: string };
 				imageUrl: string;
+				webpUrl: string;
+				thumbUrl: string;
 			};
 			expect(body.method).toBe('PUT');
 			expect(body.uploadUrl).toMatch(/^https?:\/\//);
 			expect(body.s3.bucket).toBeTruthy();
 			expect(body.s3.key).toContain('images/');
 			expect(body.headers['Content-Type']).toBe('image/jpeg');
+			expect(body.webpUrl).toContain('/images-webp/');
+			expect(body.thumbUrl).toContain('/images-thumbs-webp/');
 
 			if (!process.env.S3_ENDPOINT) {
 				return;
@@ -77,13 +81,17 @@ module.exports = (wrapped: any, expect: any, requestContext: any) =>
 					s3: { key: string };
 					imageUrl: string;
 					webpUrl: string;
+					thumbUrl: string;
 				};
 				expect(body.s3.key).toMatch(/^teachers\/[0-9a-f-]{36}\.png$/i);
 				expect(body.imageUrl).toMatch(
 					/^https:\/\/assets-cdn\.example\.com\/teachers\/[0-9a-f-]{36}\.png$/i,
 				);
 				expect(body.webpUrl).toMatch(
-					/^https:\/\/assets-cdn\.example\.com\/teachers\/[0-9a-f-]{36}\.webp$/i,
+					/^https:\/\/assets-cdn\.example\.com\/teachers-webp\/[0-9a-f-]{36}\.webp$/i,
+				);
+				expect(body.thumbUrl).toMatch(
+					/^https:\/\/assets-cdn\.example\.com\/teachers-thumbs-webp\/[0-9a-f-]{36}\.webp$/i,
 				);
 			} finally {
 				if (prev === undefined) {

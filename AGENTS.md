@@ -8,7 +8,7 @@ This repository is a **Math History** site: a **Nuxt/Vue** app at the repo root,
 |------|------|--------|
 | Legacy Nuxt app | Root (`app/`, `nuxt.config.ts`, etc.) | Vue/Nuxt 4, Sequelize + Postgres |
 | Migration client | `client/` | React 19, React Router 7, Vite; proxies `/api/*` to Nuxt in Docker |
-| Serverless API | `server_v2/` | TypeScript Lambdas, DynamoDB, S3, Zod |
+| Serverless API | `server_v2/` | TypeScript Lambdas, DynamoDB, S3, Zod; image derivatives: `server_v2/docs/IMAGE_UPLOAD_DERIVATIVES.md` |
 | Infrastructure | `infra/` | Terraform modules (CloudFront, Cognito, S3, etc.) |
 | DB migrations | `migrations/` | SQL migrations |
 

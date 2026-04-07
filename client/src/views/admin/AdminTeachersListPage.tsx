@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { apiDeleteAuthed, apiGetAuthed } from "../../services/api";
 import type { TeachersListResponse } from "../../lib/apiTypes";
 import { ROUTES } from "../../router/paths";
+import { imageWebpUrl } from "../../lib/graduateImages";
 import { AdminPagination } from "./AdminPagination";
 import "./AdminPages.css";
 
@@ -16,13 +17,8 @@ function teacherImageSrc(url: string): string {
 
 function teacherWebpSrc(url: string): string | null {
   if (!url) return null;
-  let withWebp = url;
-  if (url.includes("/teachers/")) {
-    withWebp = url.replace(/\/teachers\/([^/]+)\.(jpg|jpeg|png)$/i, "/teachers/$1.webp");
-  } else {
-    withWebp = url.replace("/images/", "/images-webp/").replace(/\.(jpg|jpeg|png)$/i, ".webp");
-  }
-  return withWebp !== url ? withWebp : null;
+  const webp = imageWebpUrl(url);
+  return webp !== url ? webp : null;
 }
 
 export default function AdminTeachersListPage() {

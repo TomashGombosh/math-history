@@ -41,15 +41,11 @@ This document tracks **status** versus `MIGRATION_DAY_BY_DAY_PLAN.md` and the ol
 
 ## 5. Image upload pipeline — derivatives (webp / thumbs)
 
-**Missing:** Legacy `server/api/upload-image.post.js` used **sharp** to write originals + webp + thumbs. `server_v2` uses **presigned PUT** to S3; `upload-service` still notes webp paths may not exist until processing exists.
+**Implemented (server_v2):** **Option A** — S3 `ObjectCreated` on originals under `images/`, `teachers_img/images/`, `graduates_img/images/` invokes Lambda **`imageDerivatives`** (`server_v2/src/handlers/s3-image-derivatives.ts`), which uses **sharp** (same resize rules as legacy `server/api/upload-image.post.js`) and writes **`images-webp`** + **`images-thumbs-webp`** next to the same prefix. Keys match **`deleteImageFiles`** (`server_v2/src/lib/image-s3.ts`). **`POST /api/upload/presign`** returns **`webpUrl`** and **`thumbUrl`** (path-only URLs; objects appear shortly after the PUT completes).
 
-**What to do:**
+**Docs:** `server_v2/docs/IMAGE_UPLOAD_DERIVATIVES.md` (deploy, Terraform note for notifications on existing buckets, client URL helpers).
 
-- Choose one approach and implement end-to-end:
-  - **Option A — Lambda on upload:** S3 event → Lambda loads object → sharp → writes `images-webp` / `images-thumbs-webp` (and scoped paths under `teachers_img` / `graduates_img`), then optional Dynamo update if URLs change.
-  - **Option B — async queue:** After successful PUT, enqueue a job; worker Lambda runs sharp (same outputs).
-- Reuse or mirror **key layout** already assumed by `deleteImageFiles` in `server_v2/src/lib/image-s3.ts` so deletes stay consistent.
-- Add **error handling** and retries; optionally delete failed partials (plan Day 12).
+**Optional follow-ups:** retries/DLQ for failed processing; delete partial derivatives on failure (plan Day 12).
 
 ---
 
@@ -97,7 +93,7 @@ This document tracks **status** versus `MIGRATION_DAY_BY_DAY_PLAN.md` and the ol
 | Admin teachers/graduates/layout UIs | **Done** | §2 — real routes/pages; optional parity QA vs legacy |
 | Graduate year photos + lightbox | **Done** | §3 |
 | Sitemap XML | **Done** | §4 — `GET /sitemap.xml` in `server_v2`, robots / CloudFront |
-| Webp/thumb pipeline after upload | **Missing / incomplete** | §5 |
+| Webp/thumb pipeline after upload | **Done** | §5 — S3 → Lambda + sharp; `server_v2/docs/IMAGE_UPLOAD_DERIVATIVES.md` |
 | Cron/queue deployment | **Stub** | §6 |
 | Layout/data verification | **Verify** (script + CI) | §7 — `load-layout-dynamodb.mjs` / migrate workflow; spot-check `GET /api/layout` |
 | Deploy + QA + cutover | **Process** | §8 |
