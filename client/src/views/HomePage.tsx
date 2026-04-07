@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { HomePageSectionsSkeleton } from "../components/skeletons/PageSkeletons";
 import { Seo } from "../lib/seo";
+import { getSiteUrl, organizationJsonLd } from "../lib/seoHelpers";
 import { ROUTES } from "../router/paths";
 import { apiGet } from "../services/api";
 import type { GraduateYearSummary, TeacherDto, TeachersCursorResponse } from "../lib/apiTypes";
@@ -60,6 +61,7 @@ export default function HomePage() {
         title="Головна"
         description="Математики УжНУ — історія викладачів та випускників математичного факультету Ужгородського національного університету."
         path={ROUTES.home}
+        jsonLd={organizationJsonLd(getSiteUrl())}
       />
       <section className="home-block intro-section">
         <h1>Математики УжНУ — історія викладачів та випускників</h1>

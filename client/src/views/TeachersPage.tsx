@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { TeachersGridSkeleton } from "../components/skeletons/PageSkeletons";
 import { Seo } from "../lib/seo";
+import { breadcrumbJsonLd, getSiteUrl } from "../lib/seoHelpers";
 import { ROUTES } from "../router/paths";
 import { apiGet } from "../services/api";
 import type { TeacherDto, TeachersCursorResponse } from "../lib/apiTypes";
@@ -72,6 +73,10 @@ export default function TeachersPage() {
         title="Викладачі"
         description="Список викладачів-математиків Ужгородського національного університету."
         path={ROUTES.teachers}
+        jsonLd={breadcrumbJsonLd(getSiteUrl(), [
+          { name: "Головна", path: ROUTES.home },
+          { name: "Викладачі", path: ROUTES.teachers },
+        ])}
       />
       <div className="teachers-page">
         <h1>Викладачі математичного факультету УжНУ</h1>

@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CognitoAuthError } from "../lib/cognito-auth";
 import { isCognitoConfigured } from "../lib/cognito-config";
+import { Seo } from "../lib/seo";
 import { ROUTES } from "../router/paths";
 import { useAuth } from "../state/AuthContext";
 
@@ -61,6 +62,12 @@ export default function LoginPage() {
 
   return (
     <Container maxWidth="sm" sx={{ py: 6 }}>
+      <Seo
+        title="Вхід в адмін-панель"
+        description="Службовий вхід для адміністраторів сайту «Математики УжНУ»."
+        path={ROUTES.login}
+        robots="noindex, nofollow"
+      />
       <Paper elevation={2} sx={{ p: { xs: 3, sm: 4 } }}>
         <Typography component="h1" variant="h5" gutterBottom>
           {phase === "credentials" ? "Вхід в адмін-панель" : "Новий пароль"}

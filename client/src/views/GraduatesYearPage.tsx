@@ -7,6 +7,7 @@ import { apiGet } from "../services/api";
 import type { GraduateCohortImage, GraduateYearDetail, GraduateYearSummary } from "../lib/apiTypes";
 import { graduateImageOriginalUrl, graduateImageWebpUrl } from "../lib/graduateImages";
 import { Seo } from "../lib/seo";
+import { breadcrumbJsonLd, getSiteUrl, graduateYearEventJsonLd } from "../lib/seoHelpers";
 import "./GraduatesYearPage.css";
 
 type YearItem = { year: number };
@@ -104,6 +105,7 @@ function GraduatesYearCohortContent({ year, openLightbox }: CohortProps) {
   const [mergedStudents, setMergedStudents] = useState<StudentRow[]>([]);
   const [studentCursor, setStudentCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -116,10 +118,14 @@ function GraduatesYearCohortContent({ year, openLightbox }: CohortProps) {
           setDetail(d);
           setMergedStudents(appendHonorsStudents(d.students ?? []));
           setStudentCursor(d.studentLastEvaluatedKey ?? null);
+          setLoadError(false);
         }
       })
       .catch(() => {
-        if (!cancelled) setDetail(null);
+        if (!cancelled) {
+          setDetail(null);
+          setLoadError(true);
+        }
       });
     return () => {
       cancelled = true;
@@ -155,6 +161,14 @@ function GraduatesYearCohortContent({ year, openLightbox }: CohortProps) {
 
   if (detail === undefined) {
     return <GraduatesYearContentSkeleton />;
+  }
+
+  if (loadError) {
+    return (
+      <div className="graduates-year-error" role="alert">
+        Помилка завантаження даних для {year} року
+      </div>
+    );
   }
 
   if (detail === null) {
@@ -253,12 +267,25 @@ export default function GraduatesYearPage() {
     };
   }, []);
 
+  const siteUrl = getSiteUrl();
+  const yearPath = ROUTES.graduatesYear(year);
+  const pageUrl = `${siteUrl}${yearPath}`;
+  const yearDescription = `Випуск ${year} року студентів-математиків УжНУ: список випускників за спеціальностями, відмінники та фото груп.`;
+
   return (
     <div className="graduates-year-page">
       <Seo
         title={`Випуск ${year} року`}
-        description={`Випуск ${year} року студентів-математиків УжНУ.`}
-        path={ROUTES.graduatesYear(year)}
+        description={yearDescription}
+        path={yearPath}
+        jsonLd={[
+          breadcrumbJsonLd(siteUrl, [
+            { name: "Головна", path: ROUTES.home },
+            { name: "Роки випуску", path: ROUTES.graduates },
+            { name: `Випуск ${year} року`, path: yearPath },
+          ]),
+          graduateYearEventJsonLd(pageUrl, year, yearDescription),
+        ]}
       />
       <h1>Випуск {year} року</h1>
       <p className="page-intro">

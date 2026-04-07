@@ -11,3 +11,383 @@
 .logout-btn {
   margin-top: 16px;
 }
+
+/* Shared admin CRUD pages */
+.admin-content {
+  background: #fff;
+  padding: 0 20px;
+}
+
+.admin-table {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px 0 30px;
+}
+
+.admin-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.admin-top-row--start {
+  justify-content: flex-start;
+}
+
+.admin-btn-add {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #1976d2;
+  background: #1976d2;
+  color: #fff;
+  text-decoration: none;
+  font-size: 13px;
+  display: inline-block;
+}
+
+.admin-search-input {
+  flex: 1;
+  min-width: 200px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 13px;
+}
+
+.admin-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-table th,
+.admin-table td {
+  border: 1px solid #ccc;
+  padding: 6px 8px;
+  text-align: left;
+  font-size: 13px;
+}
+
+.admin-table th {
+  background: #f5f5f5;
+}
+
+.admin-photo-cell img {
+  max-width: 60px;
+  max-height: 80px;
+  object-fit: cover;
+  vertical-align: middle;
+}
+
+@media (max-width: 768px) {
+  .admin-hide-narrow {
+    display: none;
+  }
+}
+
+.admin-actions-cell a {
+  margin-right: 8px;
+}
+
+.admin-delete-link {
+  border: none;
+  background: none;
+  color: #c62828;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  font-size: inherit;
+  font-family: inherit;
+}
+
+.admin-error {
+  color: #d32f2f;
+  margin-top: 8px;
+}
+
+.admin-success {
+  color: #2e7d32;
+  margin-top: 8px;
+}
+
+.admin-pagination {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.admin-pagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Forms */
+.admin-teacher-editor,
+.admin-graduate-editor,
+.admin-layout-settings {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px 16px;
+  background: #fff;
+}
+
+.admin-form {
+  max-width: 1000px;
+}
+
+.admin-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.admin-form-row input,
+.admin-form-row textarea,
+.admin-form-row select {
+  padding: 8px 10px;
+  font-size: 14px;
+  border-radius: 4px;
+  border: 1px solid #999;
+  background: #fdfdfd;
+}
+
+.admin-description textarea {
+  min-height: 120px;
+}
+
+.admin-label-bold {
+  font-weight: 600;
+  margin-top: 6px;
+}
+
+.admin-file-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.admin-form-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-btn-primary {
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: 1px solid #1976d2;
+  background: #1976d2;
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.admin-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.admin-btn-secondary {
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: 1px solid #bbb;
+  background: #f3f3f3;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.admin-degrees {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.admin-degree-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.admin-degree-other {
+  flex-wrap: wrap;
+}
+
+.admin-h3 {
+  font-size: 1.1rem;
+  margin: 12px 0 8px;
+}
+
+.admin-pub-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #eee;
+}
+
+.admin-image-preview img {
+  max-width: 150px;
+  max-height: 200px;
+  object-fit: cover;
+  border: 1px solid #ccc;
+}
+
+.admin-divider {
+  margin: 24px 0 16px;
+  border: none;
+  border-top: 1px solid #ddd;
+}
+
+.admin-teacher-preview {
+  margin-top: 8px;
+}
+
+.admin-teacher-preview--compact {
+  max-width: 900px;
+}
+
+.admin-teacher-header {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 20px;
+  align-items: flex-start;
+}
+
+.admin-teacher-photo img {
+  object-fit: cover;
+  border: 1px solid #ccc;
+}
+
+.admin-photo-placeholder {
+  width: 160px;
+  height: 210px;
+  border: 1px solid #ccc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+}
+
+/* Layout settings */
+.admin-layout-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .admin-layout-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-layout-section-gap {
+  margin-top: 24px;
+}
+
+.admin-hint {
+  font-size: 13px;
+  color: #555;
+  margin: 4px 0 8px;
+}
+
+.admin-layout-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.admin-layout-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid #ddd;
+  margin-bottom: 6px;
+  cursor: grab;
+}
+
+.admin-layout-row span:nth-child(2) {
+  flex: 1;
+}
+
+/* Graduates */
+.admin-new-spec {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.admin-tags-list {
+  border: 1px solid #ddd;
+  padding: 8px;
+  margin: 8px 0;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.admin-tag-btn {
+  display: inline-block;
+  margin: 4px 6px 4px 0;
+  padding: 4px 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.admin-add-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.admin-selected-label {
+  font-weight: 600;
+  display: block;
+  margin-top: 8px;
+}
+
+.admin-spec-block {
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.admin-photos-grid {
+  margin: 12px 0;
+}
+
+.admin-photo-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.admin-photo-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.admin-student-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  align-items: flex-start;
+}
