@@ -24,6 +24,8 @@
 #     CORS_ORIGIN — optional browser origin for API CORS
 #     SITE_URL — same canonical public origin as VITE_SITE_URL (https://CLOUDFRONT_ALIAS, no trailing slash).
 #       Required for correct sitemap <loc> when CloudFront uses AllViewerExceptHostHeader (Host at Lambda is execute-api).
+#     TEACHER_IMAGE_CDN_BASE — public origin for teacher photos (assets CloudFront / `teachers/*` keys); no trailing slash.
+#       Match ASSETS_CLOUDFRONT_ALIAS (e.g. https://assets-math-stage.afj-solution.com).
 #   Naming: Serverless --stage is stage (development branch) or prod (main), matching TF_VAR_environment.
 #
 # Client static site (same branch → environment as Serverless API):
@@ -228,6 +230,7 @@ jobs:
           SUBNET_ID: ${{ vars.SUBNET_ID }}
           CORS_ORIGIN: ${{ vars.CORS_ORIGIN }}
           SITE_URL: ${{ vars.VITE_SITE_URL }}
+          TEACHER_IMAGE_CDN_BASE: ${{ vars.TEACHER_IMAGE_CDN_BASE }}
           SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
         run: npx serverless deploy --stage ${{ steps.target.outputs.tf_env }} --region ${{ env.AWS_REGION }}
 

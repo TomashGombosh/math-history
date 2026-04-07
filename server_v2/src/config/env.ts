@@ -40,6 +40,8 @@ export const envSchema = z
 		CORS_ORIGIN: optionalTrimmed(),
 		/** Public canonical site URL for sitemap `<loc>` when `Host` is the API execute-api domain. No trailing slash. */
 		SITE_URL: optionalTrimmed(),
+		/** Public origin for teacher photos (data bucket / assets CDN). No trailing slash. Used to build full `imageUrl` after presigned upload. */
+		TEACHER_IMAGE_CDN_BASE: optionalTrimmed(),
 	})
 	.superRefine((data, ctx) => {
 		const usesLocalDynamo = Boolean(data.DYNAMODB_ENDPOINT);

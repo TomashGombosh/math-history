@@ -28,6 +28,8 @@ export async function deleteImageFiles(imageUrl: string | null | undefined): Pro
 		['images', fileName],
 		['images-webp', webpName],
 		['images-thumbs-webp', webpName],
+		['teachers', fileName],
+		['teachers', webpName],
 		['teachers_img', 'images', fileName],
 		['teachers_img', 'images-webp', webpName],
 		['teachers_img', 'images-thumbs-webp', webpName],
