@@ -16,9 +16,12 @@ function teacherImageSrc(url: string): string {
 
 function teacherWebpSrc(url: string): string | null {
   if (!url) return null;
-  const withWebp = url
-    .replace("/images/", "/images-webp/")
-    .replace(/\.(jpg|jpeg|png)$/i, ".webp");
+  let withWebp = url;
+  if (url.includes("/teachers/")) {
+    withWebp = url.replace(/\/teachers\/([^/]+)\.(jpg|jpeg|png)$/i, "/teachers/$1.webp");
+  } else {
+    withWebp = url.replace("/images/", "/images-webp/").replace(/\.(jpg|jpeg|png)$/i, ".webp");
+  }
   return withWebp !== url ? withWebp : null;
 }
 
