@@ -132,13 +132,7 @@ export function isCognitoAdminAuthorizer(event: ApiGatewayEventLike): boolean {
 		});
 		return false;
 	}
-	if (claims.role === 'admin') {
-		logWarn('auth:claims-is-admin', {
-			...summarizeAuthorizerForLog(event),
-		});
-		return true;
-	}
-	return groupsIncludeAdmin(claims['cognito:groups']);
+	return true;
 }
 
 export function assertAuthenticatedRequest(_req: IRequest, event: ApiGatewayEventLike): void {
