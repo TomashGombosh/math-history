@@ -2,7 +2,7 @@ module.exports = {
   rootDir: '.',
   testEnvironment: 'node',
   roots: ['<rootDir>/.build'],
-  testMatch: ['<rootDir>/.build/tests/app.js'],
+  testMatch: ['<rootDir>/.build/tests/app.js', '<rootDir>/.build/tests/image-derivative-keys.test.js'],
   modulePaths: ['<rootDir>/.build'],
   collectCoverage: true,
   coverageDirectory: '/tmp/coverage',
