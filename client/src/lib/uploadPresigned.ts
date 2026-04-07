@@ -6,6 +6,9 @@ export interface PresignImageResponse {
   method: "PUT";
   headers: { "Content-Type": string };
   imageUrl: string;
+  /** Populated by API; same host/path rules as `imageUrl` — objects appear shortly after PUT (S3 → Lambda). */
+  webpUrl: string;
+  thumbUrl: string;
 }
 
 /**
