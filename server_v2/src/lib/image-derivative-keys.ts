@@ -1,6 +1,6 @@
 /**
- * S3 keys for admin uploads: originals live under `.../images/<file>`;
- * derivatives use `.../images-webp/` and `.../images-thumbs-webp/` (see `image-s3.ts` delete paths).
+ * S3 keys for admin uploads: originals live under `.../images/<file>` or `teachers/<file>`;
+ * derivatives use parallel `*-webp` / `*-thumbs-webp` folders (see `image-s3.ts` delete paths).
  */
 
 const IMAGE_SEGMENT = 'images';
@@ -9,13 +9,15 @@ export function webpBasenameFromOriginalName(fileName: string): string {
 	return fileName.replace(/\.(jpg|jpeg|png|webp)$/i, '.webp');
 }
 
-/** True for keys produced by presigned PUT to `images/`, `teachers_img/images/`, `graduates_img/images/`. */
+/** True for keys produced by presigned PUT to scoped `.../images/<file>` or flat `teachers/<file>`. */
 export function isOriginalUploadObjectKey(key: string): boolean {
 	const segs = key.split('/').filter(Boolean);
 	if (segs.length < 2) return false;
-	if (segs[segs.length - 2] !== IMAGE_SEGMENT) return false;
 	const base = segs[segs.length - 1] ?? '';
-	return /\.(jpe?g|png|webp)$/i.test(base);
+	if (!/\.(jpe?g|png|webp)$/i.test(base)) return false;
+	if (segs[0] === 'teachers' && segs.length === 2) return true;
+	if (segs[segs.length - 2] === IMAGE_SEGMENT) return true;
+	return false;
 }
 
 export interface DerivativeKeys {
@@ -24,13 +26,25 @@ export interface DerivativeKeys {
 }
 
 export function derivativeKeysFromOriginalKey(originalKey: string): DerivativeKeys | null {
-	if (!isOriginalUploadObjectKey(originalKey)) return null;
 	const segs = originalKey.split('/').filter(Boolean);
-	const fileName = segs.pop()!;
-	const _images = segs.pop();
-	if (_images !== IMAGE_SEGMENT) return null;
-	const prefix = segs;
+	if (segs.length < 2) return null;
+
+	const fileName = segs[segs.length - 1]!;
+	const parent = segs[segs.length - 2]!;
 	const webpName = webpBasenameFromOriginalName(fileName);
+
+	// Flat teacher uploads: teachers/<uuid>.<ext> → teachers-webp/ / teachers-thumbs-webp/
+	if (segs[0] === 'teachers' && segs.length === 2 && parent === 'teachers') {
+		return {
+			webpKey: `teachers-webp/${webpName}`,
+			thumbWebpKey: `teachers-thumbs-webp/${webpName}`,
+		};
+	}
+
+	if (parent !== IMAGE_SEGMENT) return null;
+	segs.pop();
+	segs.pop();
+	const prefix = segs;
 	return {
 		webpKey: [...prefix, 'images-webp', webpName].join('/'),
 		thumbWebpKey: [...prefix, 'images-thumbs-webp', webpName].join('/'),

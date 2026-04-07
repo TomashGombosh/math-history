@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { webpBasenameFromOriginalName } from '@lib/image-derivative-keys';
@@ -16,6 +17,20 @@ function subDirsForScope(scope: string): string[] {
 		return ['graduates_img'];
 	}
 	return [];
+}
+
+/** Full public URL for a `teachers/...` object key (CDN or site `/images/` prefix). */
+function publicUrlForTeacherObjectKey(relativePath: string): string {
+	const normalized = relativePath.replace(/^\/+/, '');
+	const base = process.env.TEACHER_IMAGE_CDN_BASE?.trim();
+	if (base) {
+		return `${base.replace(/\/$/, '')}/${normalized}`;
+	}
+	const site = process.env.SITE_URL?.trim();
+	if (site) {
+		return `${site.replace(/\/$/, '')}/images/${normalized}`;
+	}
+	return `/images/${normalized}`;
 }
 
 export interface PresignImageUploadInput {
@@ -48,30 +63,41 @@ export async function createPresignedImageUpload(input: PresignImageUploadInput)
 	}
 
 	const ext = path.extname(input.originalFileName).toLowerCase() || '.jpg';
-	const fileName = `${Date.now()}${ext}`;
-	const webpName = webpBasenameFromOriginalName(fileName);
-
 	const scope = (input.scope || 'common').toString();
-	const sub = subDirsForScope(scope);
 
 	let key: string;
 	let imageUrl: string;
 	let webpUrl: string;
 	let thumbUrl: string;
 
-	if (sub.length) {
-		const imgSegs = [...sub, 'images'];
-		const webpSegs = [...sub, 'images-webp'];
-		const thumbSegs = [...sub, 'images-thumbs-webp'];
-		key = `${imgSegs.join('/')}/${fileName}`;
-		imageUrl = `/${imgSegs.join('/')}/${fileName}`;
-		webpUrl = `/${webpSegs.join('/')}/${webpName}`;
-		thumbUrl = `/${thumbSegs.join('/')}/${webpName}`;
+	if (scope === 'teacher') {
+		const id = randomUUID();
+		const fileName = `${id}${ext}`;
+		const webpName = `${id}.webp`;
+		key = `teachers/${fileName}`;
+		imageUrl = publicUrlForTeacherObjectKey(`teachers/${fileName}`);
+		webpUrl = publicUrlForTeacherObjectKey(`teachers-webp/${webpName}`);
+		thumbUrl = publicUrlForTeacherObjectKey(`teachers-thumbs-webp/${webpName}`);
 	} else {
-		key = `images/${fileName}`;
-		imageUrl = `/images/${fileName}`;
-		webpUrl = `/images-webp/${webpName}`;
-		thumbUrl = `/images-thumbs-webp/${webpName}`;
+		const fileName = `${Date.now()}${ext}`;
+		const webpName = webpBasenameFromOriginalName(fileName);
+
+		const sub = subDirsForScope(scope);
+
+		if (sub.length) {
+			const imgSegs = [...sub, 'images'];
+			const webpSegs = [...sub, 'images-webp'];
+			const thumbSegs = [...sub, 'images-thumbs-webp'];
+			key = `${imgSegs.join('/')}/${fileName}`;
+			imageUrl = `/${imgSegs.join('/')}/${fileName}`;
+			webpUrl = `/${webpSegs.join('/')}/${webpName}`;
+			thumbUrl = `/${thumbSegs.join('/')}/${webpName}`;
+		} else {
+			key = `images/${fileName}`;
+			imageUrl = `/images/${fileName}`;
+			webpUrl = `/images-webp/${webpName}`;
+			thumbUrl = `/images-thumbs-webp/${webpName}`;
+		}
 	}
 
 	const bucket = getS3BucketName();

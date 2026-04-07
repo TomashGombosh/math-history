@@ -17,6 +17,11 @@ export function imageWebpUrl(url: string): string {
       .replace("/teachers_img/images/", "/teachers_img/images-webp/")
       .replace(/\.(jpg|jpeg|png)$/i, ".webp");
   }
+  // Flat teacher keys: .../teachers/<uuid>.<ext> → .../teachers-webp/<uuid>.webp (presign + derivative pipeline)
+  if (url.includes("/teachers/") && !url.includes("/teachers-webp/") && !url.includes("/teachers-thumbs-webp/")) {
+    const replaced = url.replace(/\/teachers\/([^/]+)\.(jpg|jpeg|png)$/i, "/teachers-webp/$1.webp");
+    if (replaced !== url) return replaced;
+  }
   if (url.includes("/images/")) {
     return url.replace("/images/", "/images-webp/").replace(/\.(jpg|jpeg|png)$/i, ".webp");
   }
@@ -35,6 +40,10 @@ export function imageThumbWebpUrl(url: string): string {
     return url
       .replace("/teachers_img/images/", "/teachers_img/images-thumbs-webp/")
       .replace(/\.(jpg|jpeg|png)$/i, ".webp");
+  }
+  if (url.includes("/teachers/") && !url.includes("/teachers-thumbs-webp/")) {
+    const replaced = url.replace(/\/teachers\/([^/]+)\.(jpg|jpeg|png)$/i, "/teachers-thumbs-webp/$1.webp");
+    if (replaced !== url) return replaced;
   }
   if (url.includes("/images/")) {
     return url.replace("/images/", "/images-thumbs-webp/").replace(/\.(jpg|jpeg|png)$/i, ".webp");

@@ -21,6 +21,12 @@ describe("imageWebpUrl", () => {
   it("should map teachers_img/images/ to teachers_img/images-webp/", () => {
     expect(imageWebpUrl("/teachers_img/images/123.jpg")).toBe("/teachers_img/images-webp/123.webp");
   });
+
+  it("should map flat CDN teachers/ originals to teachers-webp/", () => {
+    expect(imageWebpUrl("https://cdn.example.com/teachers/550e8400-e29b-41d4-a716-446655440000.jpg")).toBe(
+      "https://cdn.example.com/teachers-webp/550e8400-e29b-41d4-a716-446655440000.webp",
+    );
+  });
 });
 
 describe("imageThumbWebpUrl", () => {

@@ -5,7 +5,7 @@ vi.mock("../../lib/api", () => ({
   apiPostAuthed: vi.fn(async () => ({
     uploadUrl: "https://s3.example/put",
     headers: { "Content-Type": "image/jpeg" },
-    imageUrl: "/teachers_img/images/x.jpg",
+    imageUrl: "https://assets.example.com/teachers/00000000-0000-4000-8000-000000000001.jpg",
   })),
 }));
 
@@ -20,7 +20,7 @@ describe("uploadImageWithPresign", () => {
   it("should PUT file to presigned URL and return imageUrl", async () => {
     const file = new File([new Uint8Array([1, 2, 3])], "a.jpg", { type: "image/jpeg" });
     const url = await uploadImageWithPresign(file, "teacher");
-    expect(url).toBe("/teachers_img/images/x.jpg");
+    expect(url).toBe("https://assets.example.com/teachers/00000000-0000-4000-8000-000000000001.jpg");
     expect(fetch).toHaveBeenCalledWith(
       "https://s3.example/put",
       expect.objectContaining({ method: "PUT", body: file })

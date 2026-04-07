@@ -61,6 +61,47 @@ module.exports = (wrapped: any, expect: any, requestContext: any) =>
 			expect(put.ok).toBe(true);
 		});
 
+		it('uses teachers/ prefix and full imageUrl for teacher scope', async () => {
+			const prev = process.env.TEACHER_IMAGE_CDN_BASE;
+			process.env.TEACHER_IMAGE_CDN_BASE = 'https://assets-cdn.example.com';
+			try {
+				const res = await wrapped.run({
+					requestContext: adminRC,
+					path: '/api/upload/presign',
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						scope: 'teacher',
+						contentType: 'image/png',
+						originalFileName: 'photo.png',
+					}),
+				});
+				expect(res.statusCode).toBe(200);
+				const body = jsonBody(res, expect) as {
+					s3: { key: string };
+					imageUrl: string;
+					webpUrl: string;
+					thumbUrl: string;
+				};
+				expect(body.s3.key).toMatch(/^teachers\/[0-9a-f-]{36}\.png$/i);
+				expect(body.imageUrl).toMatch(
+					/^https:\/\/assets-cdn\.example\.com\/teachers\/[0-9a-f-]{36}\.png$/i,
+				);
+				expect(body.webpUrl).toMatch(
+					/^https:\/\/assets-cdn\.example\.com\/teachers-webp\/[0-9a-f-]{36}\.webp$/i,
+				);
+				expect(body.thumbUrl).toMatch(
+					/^https:\/\/assets-cdn\.example\.com\/teachers-thumbs-webp\/[0-9a-f-]{36}\.webp$/i,
+				);
+			} finally {
+				if (prev === undefined) {
+					delete process.env.TEACHER_IMAGE_CDN_BASE;
+				} else {
+					process.env.TEACHER_IMAGE_CDN_BASE = prev;
+				}
+			}
+		});
+
 		it('requires authentication', async () => {
 			const res = await wrapped.run({
 				requestContext,

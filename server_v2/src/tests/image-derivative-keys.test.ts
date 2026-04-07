@@ -8,6 +8,7 @@ describe('image-derivative-keys', () => {
 
 	it('isOriginalUploadObjectKey', () => {
 		expect(isOriginalUploadObjectKey('images/1.jpg')).toBe(true);
+		expect(isOriginalUploadObjectKey('teachers/uuid.jpg')).toBe(true);
 		expect(isOriginalUploadObjectKey('teachers_img/images/1.jpg')).toBe(true);
 		expect(isOriginalUploadObjectKey('graduates_img/images/x.webp')).toBe(true);
 		expect(isOriginalUploadObjectKey('images-webp/x.webp')).toBe(false);
@@ -18,6 +19,10 @@ describe('image-derivative-keys', () => {
 		expect(derivativeKeysFromOriginalKey('images/a.jpeg')).toEqual({
 			webpKey: 'images-webp/a.webp',
 			thumbWebpKey: 'images-thumbs-webp/a.webp',
+		});
+		expect(derivativeKeysFromOriginalKey('teachers/uuid-1.jpg')).toEqual({
+			webpKey: 'teachers-webp/uuid-1.webp',
+			thumbWebpKey: 'teachers-thumbs-webp/uuid-1.webp',
 		});
 		expect(derivativeKeysFromOriginalKey('teachers_img/images/b.jpg')).toEqual({
 			webpKey: 'teachers_img/images-webp/b.webp',
