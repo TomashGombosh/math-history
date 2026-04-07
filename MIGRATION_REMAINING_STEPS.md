@@ -66,12 +66,13 @@ This document tracks **status** versus `MIGRATION_DAY_BY_DAY_PLAN.md` and the ol
 
 ## 7. Data and layout migration
 
-**Missing (verify):** Plan Day 10 — migration from `layoutConfig.json` into DynamoDB (or S3) and validation that production data matches legacy.
+**Status:** Layout is stored in DynamoDB (`pk=CONFIG`, `sk=LAYOUT`, `payload` matches legacy `layoutConfig.json`). Import script: `server_v2/scripts/load-layout-dynamodb.mjs` with `server_v2/migration/data/layout-seed.json` (kept in sync with repo-root `layoutConfig.json`). Manual workflow **Migrate DynamoDB** can load `layout` alone or with `all`.
 
 **What to do:**
 
-- Confirm **layout** documents were imported and `GET /api/layout` matches admin expectations.
-- Keep **graduates/teachers** migration scripts (`server/scripts/`, `server_v2/migration/`, CI `migrate-dynamodb`) documented and run in the right order for each environment.
+- After importing teachers/graduates/layout for an environment, confirm **`GET /api/layout`** returns the expected `headerFields` / `sections` (admin and public teacher page).
+- Run **graduates** then **teachers** then **layout** (or `all`) via `.github/workflows/migrate-dynamodb.yml` in order; `layout` overwrites `CONFIG/LAYOUT` if you need to reset from seed.
+- Keep **graduates/teachers** migration scripts (`server/scripts/` for legacy SQL/XML, `server_v2/migration/`, CI `migrate-dynamodb`) and run in the right order per environment.
 - After cutover, run **spot checks** (counts, random records, image URLs).
 
 ---
@@ -98,5 +99,5 @@ This document tracks **status** versus `MIGRATION_DAY_BY_DAY_PLAN.md` and the ol
 | Sitemap XML | **Done** | §4 — `GET /sitemap.xml` in `server_v2`, robots / CloudFront |
 | Webp/thumb pipeline after upload | **Missing / incomplete** | §5 |
 | Cron/queue deployment | **Stub** | §6 |
-| Layout/data verification | **Verify** | §7 |
+| Layout/data verification | **Verify** (script + CI) | §7 — `load-layout-dynamodb.mjs` / migrate workflow; spot-check `GET /api/layout` |
 | Deploy + QA + cutover | **Process** | §8 |

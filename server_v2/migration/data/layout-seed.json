@@ -1,0 +1,48 @@
+{
+  "headerFields": [
+    {
+      "id": "title",
+      "label": "Title",
+      "visible": true,
+      "order": 1
+    },
+    {
+      "id": "academicDegree",
+      "label": "Науковий ступінь",
+      "visible": true,
+      "order": 2
+    },
+    {
+      "id": "position",
+      "label": "Посада",
+      "visible": true,
+      "order": 3
+    },
+    {
+      "id": "faculty",
+      "label": "Факультет",
+      "visible": true,
+      "order": 4
+    }
+  ],
+  "sections": [
+    {
+      "id": "shortInformation",
+      "title": "Коротка інформація",
+      "visible": true,
+      "order": 1
+    },
+    {
+      "id": "bio",
+      "title": "Біографія",
+      "visible": true,
+      "order": 2
+    },
+    {
+      "id": "publications",
+      "title": "Публікації",
+      "visible": true,
+      "order": 3
+    }
+  ]
+}
