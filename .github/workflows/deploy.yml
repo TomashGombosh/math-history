@@ -37,6 +37,7 @@
 #
 # CloudFront (Terraform, after Serverless API + client bucket/sync):
 #   Per-environment secret: AWS_CLOUDFRONT_ROLE_TO_ASSUME — OIDC role with CloudFront + S3 bucket policy
+#     (must allow cloudfront:CreateInvalidation and cloudfront:ListDistributions for post-apply cache purge)
 #   Per-environment variables (required):
 #     ACM_CERTIFICATE_ARN — ACM cert in us-east-1 covering CLOUDFRONT_ALIAS (SNI for CloudFront)
 #     HTTP_API_EXECUTE_API_DOMAIN — HTTP API hostname only, e.g. abc.execute-api.eu-north-1.amazonaws.com
@@ -341,6 +342,39 @@ jobs:
           lock-table: ${{ vars.TF_LOCK_TABLE }}
           state-key: cloudfront/${{ steps.target.outputs.tf_env }}.tfstate
           tf-environment: ${{ steps.target.outputs.tf_env }}
+
+      - name: Configure AWS credentials (invalidate site cache)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_CLOUDFRONT_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS account (invalidation)
+        env:
+          EXPECTED: ${{ secrets.AWS_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          ACTUAL=$(aws sts get-caller-identity --query Account --output text)
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "AWS account mismatch: expected ${EXPECTED}, got ${ACTUAL}"
+            exit 1
+          fi
+
+      - name: Invalidate CloudFront cache (static site)
+        env:
+          CLOUDFRONT_ALIAS: ${{ vars.CLOUDFRONT_ALIAS }}
+        run: |
+          set -euo pipefail
+          DIST_ID=$(aws cloudfront list-distributions \
+            --query "DistributionList.Items[?Aliases.Items && contains(Aliases.Items, '${CLOUDFRONT_ALIAS}')].Id | [0]" \
+            --output text)
+          if [ -z "$DIST_ID" ] || [ "$DIST_ID" = "None" ]; then
+            echo "No CloudFront distribution found for alias ${CLOUDFRONT_ALIAS}"
+            exit 1
+          fi
+          aws cloudfront create-invalidation \
+            --distribution-id "$DIST_ID" \
+            --paths "/*"
 
   deploy-cloudfront-assets:
     name: Terraform apply (CloudFront assets)
