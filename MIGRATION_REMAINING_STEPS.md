@@ -75,12 +75,13 @@ This document lists **gaps** versus `MIGRATION_DAY_BY_DAY_PLAN.md` and the old s
 
 ## 7. Data and layout migration
 
-**Missing (verify):** Plan Day 10 — migration from `layoutConfig.json` into DynamoDB (or S3) and validation that production data matches legacy.
+**Status:** Layout is stored in DynamoDB (`pk=CONFIG`, `sk=LAYOUT`, `payload` matches legacy `layoutConfig.json`). Import script: `server_v2/scripts/load-layout-dynamodb.mjs` with `server_v2/migration/data/layout-seed.json` (kept in sync with repo-root `layoutConfig.json`). Manual workflow **Migrate DynamoDB** can load `layout` alone or with `all`.
 
 **What to do:**
 
-- Confirm **layout** documents were imported and `GET /api/layout` matches admin expectations.
-- Keep **graduates/teachers** migration scripts (`server/scripts/`, `server_v2/migration/`, CI `migrate-dynamodb`) documented and run in the right order for each environment.
+- After importing teachers/graduates/layout for an environment, confirm **`GET /api/layout`** returns the expected `headerFields` / `sections` (admin and public teacher page).
+- Run **graduates** then **teachers** then **layout** (or `all`) via `.github/workflows/migrate-dynamodb.yml` in order; `layout` overwrites `CONFIG/LAYOUT` if you need to reset from seed.
+- Keep **graduates/teachers** migration scripts (`server/scripts/` for legacy SQL/XML, `server_v2/migration/`, CI `migrate-dynamodb`) and run in the right order per environment.
 - After cutover, run **spot checks** (counts, random records, image URLs).
 
 ---
@@ -107,5 +108,5 @@ This document lists **gaps** versus `MIGRATION_DAY_BY_DAY_PLAN.md` and the old s
 | Sitemap XML | Missing | §4 |
 | Webp/thumb pipeline after upload | Done (S3 → Lambda + sharp) | §5, `server_v2/docs/IMAGE_UPLOAD_DERIVATIVES.md` |
 | Cron/queue deployment | Stub | §6 |
-| Layout/data verification | Verify | §7 |
+| Layout/data verification | Script + CI option | §7 (import `layout`; spot-check `GET /api/layout`) |
 | Deploy + QA + cutover | Process | §8 |

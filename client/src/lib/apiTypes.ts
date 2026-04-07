@@ -7,6 +7,31 @@ export type TeachersListResponse = {
   currentPage: number;
 };
 
+/** Dynamo cursor mode (`cursor=1` on GET /api/teachers). */
+export type TeachersCursorResponse = {
+  teachers: TeacherDto[];
+  lastEvaluatedKey?: string | null;
+};
+
+export type GraduateCohortRow = {
+  id: number;
+  year: number;
+  number?: number | null;
+  title?: string | null;
+  students: unknown[];
+  images: unknown[];
+  totalStudents: number;
+  totalWithHonours: number;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+};
+
+/** Cursor mode for GET /api/graduates. */
+export type GraduatesCursorResponse = {
+  graduates: GraduateCohortRow[];
+  lastEvaluatedKey?: string | null;
+};
+
 export type TeacherDto = {
   id: number;
   name: string;
@@ -52,6 +77,9 @@ export type GraduateYearDetail = {
     section?: string;
     honorsDegree?: boolean;
   }>;
+  /** Present when using `cursor=1` on GET /api/graduates/:year */
+  studentTotal?: number;
+  studentLastEvaluatedKey?: string | null;
 };
 
 export type LayoutConfigResponse = {

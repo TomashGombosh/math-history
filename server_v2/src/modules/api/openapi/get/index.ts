@@ -15,13 +15,14 @@ const PUBLIC_DESCRIPTION = `
 | Method | Path | Purpose |
 |--------|------|---------|
 | GET | /openapi | This OpenAPI document |
-| GET | /api/teachers | Paginated teacher list (query: page, limit, search, sortBy, sortDir, positions, degrees) |
+| GET | /api/teachers | Teacher list: page/limit or \`cursor=1\` + \`exclusiveStartKey\` (Dynamo last key) |
 | GET | /api/teachers/filters | Distinct positions and degrees for filters |
 | GET | /api/teachers/by-slug/{slug} | Teacher by URL slug |
-| GET | /api/graduates | Graduate cohorts (optional query: year) |
+| GET | /api/graduates | Cohort rows: optional year, or \`cursor=1\` + \`exclusiveStartKey\` for Dynamo pagination |
 | GET | /api/graduates/years | Aggregated stats per year |
 | GET | /api/graduates/specialties | Distinct student specialties |
-| GET | /api/graduates/{year} | Single year cohort (merged view) |
+| GET | /api/graduates/{year} | Year detail; \`cursor=1\` + \`limit\` paginates merged student list |
+| GET | /api/gratitudes | Reserved list (cursor shape; empty until populated) |
 | GET | /api/layout | Public layout / field visibility config |
 | GET | /sitemap.xml | Dynamic XML sitemap (teachers, graduates, static pages) |
 
@@ -85,11 +86,11 @@ export const handler = async (ctx: Engine) => {
 					tags: ['Public'],
 					summary: 'List teachers',
 					description:
-						'Paginated list with optional search and filters. Query: page, limit, search, sortBy (name|position|degree), sortDir (asc|desc), positions, degrees (comma-separated or repeated).',
+						'List with optional search and filters (page, limit, …), or Dynamo cursor mode: cursor=1, limit, exclusiveStartKey (opaque token from last response).',
 					security: [],
 					responses: {
 						200: {
-							description: 'teachers, total, totalPages, currentPage',
+							description: 'Offset mode: teachers, total, totalPages, currentPage. Cursor mode: teachers, lastEvaluatedKey.',
 						},
 					},
 				},
@@ -130,10 +131,22 @@ export const handler = async (ctx: Engine) => {
 				get: {
 					tags: ['Public'],
 					summary: 'List graduate cohorts',
-					description: 'Optional query: year (filter by graduation year).',
+					description:
+						'Optional year filter. Default: full array. With cursor=1 and optional exclusiveStartKey: { graduates, lastEvaluatedKey }.',
 					security: [],
 					responses: {
-						200: { description: 'Array of graduate cohort rows' },
+						200: { description: 'Array of cohorts, or paginated object with lastEvaluatedKey' },
+					},
+				},
+			},
+			'/api/gratitudes': {
+				get: {
+					tags: ['Public'],
+					summary: 'Gratitudes (placeholder)',
+					description: 'Reserved; returns empty list with lastEvaluatedKey until backed by data.',
+					security: [],
+					responses: {
+						200: { description: '{ gratitudes: [], lastEvaluatedKey: null }' },
 					},
 				},
 			},
@@ -162,7 +175,8 @@ export const handler = async (ctx: Engine) => {
 				get: {
 					tags: ['Public'],
 					summary: 'Graduate year detail',
-					description: 'Merged cohort view for a single year (title, images, students).',
+					description:
+						'Merged cohort view. Add cursor=1, limit, exclusiveStartKey to paginate the merged students array (studentTotal, studentLastEvaluatedKey).',
 					security: [],
 					parameters: [
 						{
