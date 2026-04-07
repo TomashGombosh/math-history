@@ -1,4 +1,5 @@
 import type { IRequest } from '@interfaces/types';
+import { logWarn } from './lambda-log';
 
 type ApiGatewayEventLike = {
 	requestContext?: {
@@ -121,10 +122,17 @@ function groupsIncludeAdmin(groups: unknown): boolean {
  */
 export function isCognitoAdminAuthorizer(event: ApiGatewayEventLike): boolean {
 	const claims = jwtClaimsFromEvent(event);
+
 	if (!claims) {
+		logWarn('auth:claims_missing', {
+			...summarizeAuthorizerForLog(event),
+		});
 		return false;
 	}
 	if (claims.role === 'admin') {
+		logWarn('auth:claims-is-admin', {
+			...summarizeAuthorizerForLog(event),
+		});
 		return true;
 	}
 	return groupsIncludeAdmin(claims['cognito:groups']);
