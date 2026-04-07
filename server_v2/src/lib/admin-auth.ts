@@ -1,5 +1,5 @@
 import type { IRequest } from '@interfaces/types';
-import { logWarn } from './lambda-log';
+import { logWarn, logInfo } from './lambda-log';
 
 type ApiGatewayEventLike = {
 	requestContext?: {
@@ -25,10 +25,12 @@ function flatClaimsFromAuthorizer(authorizer: Record<string, unknown> | undefine
 }
 
 function jwtClaimsFromAuthorizerBlock(authorizer: Record<string, unknown> | undefined): Record<string, unknown> | null {
+	logInfo("jwtClaimsFromEvent:get_claims_authorizer_block", { ...(authorizer ?? {}) });
 	return claimsFromAuthorizer(authorizer) ?? flatClaimsFromAuthorizer(authorizer);
 }
 
 function jwtClaimsFromEvent(event: ApiGatewayEventLike): Record<string, unknown> | null {
+	logInfo("jwtClaimsFromEvent:get_claims", event)
 	const rc = event.requestContext;
 	if (!rc) {
 		return null;
@@ -36,6 +38,7 @@ function jwtClaimsFromEvent(event: ApiGatewayEventLike): Record<string, unknown>
 	// HTTP API JWT authorizer (format 2.0): requestContext.authorizer.jwt.claims (see AWS docs)
 	const fromRoot = jwtClaimsFromAuthorizerBlock(rc.authorizer as Record<string, unknown> | undefined);
 	if (fromRoot) {
+		logInfo("jwtClaimsFromEvent:get_claims_root", event)
 		return fromRoot;
 	}
 	const httpAuth = rc.http?.authorizer;
