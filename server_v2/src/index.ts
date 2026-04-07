@@ -5,7 +5,7 @@ import type z from 'zod';
 import type { AppConfig } from '@config/types';
 import getConfig from '@config/env';
 import * as consts from '@config/consts';
-import { assertAuthenticatedRequest } from '@lib/admin-auth';
+import { assertAuthenticatedRequest, summarizeAuthorizerForLog } from '@lib/admin-auth';
 import { correlationFromLambda, logInfo, logWarn } from '@lib/lambda-log';
 import { ResponseWriter } from '@lib/response-writer';
 import { normalizeApiSegments, resolveModulePath } from '@lib/route-resolve';
@@ -199,6 +199,14 @@ export const handler = async (event: any, context: Context) => {
 		try {
 			assertAuthenticatedRequest(req, event);
 		} catch {
+			logWarn('auth:admin_check_failed', {
+				...correlationIds,
+				route: pathOnly,
+				method,
+				...summarizeAuthorizerForLog(event),
+				durationMs: Date.now() - t0,
+				service: 'math-history-server',
+			});
 			return ResponseWriter.Unauthorized({ message: 'Unauthorized' });
 		}
 	}

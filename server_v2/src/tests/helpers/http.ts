@@ -3,6 +3,8 @@ export function jsonBody(res: { body?: string }, expect: any): unknown {
 	return JSON.parse(String(res.body));
 }
 
+const adminJwtClaims: { 'cognito:groups': string[] } = { 'cognito:groups': ['admin'] };
+
 /** Mimics API Gateway HTTP API JWT authorizer context (Cognito admin group) for integration tests. */
 export function withCognitoAdminAuthorizer<T extends Record<string, unknown>>(
 	base: T,
@@ -12,8 +14,42 @@ export function withCognitoAdminAuthorizer<T extends Record<string, unknown>>(
 		authorizer: {
 			jwt: {
 				claims: {
-					'cognito:groups': ['admin'],
+					...adminJwtClaims,
 				},
+			},
+		},
+	};
+}
+
+/** Same as {@link withCognitoAdminAuthorizer} but claims only under `requestContext.http.authorizer` (some proxy/API shapes). */
+export function withCognitoAdminAuthorizerUnderHttp<T extends Record<string, unknown>>(
+	base: T,
+): T & { http: { authorizer: { jwt: { claims: { 'cognito:groups': string[] } } } } } {
+	const http = (base as { http?: Record<string, unknown> }).http ?? {};
+	return {
+		...base,
+		http: {
+			...http,
+			authorizer: {
+				jwt: {
+					claims: {
+						...adminJwtClaims,
+					},
+				},
+			},
+		},
+	};
+}
+
+/** Payload format 1.0 style: flat `authorizer.claims` without `jwt` wrapper (AWS HTTP API docs). */
+export function withCognitoAdminAuthorizerFlatClaims<T extends Record<string, unknown>>(
+	base: T,
+): T & { authorizer: { claims: { 'cognito:groups': string[] } } } {
+	return {
+		...base,
+		authorizer: {
+			claims: {
+				...adminJwtClaims,
 			},
 		},
 	};
