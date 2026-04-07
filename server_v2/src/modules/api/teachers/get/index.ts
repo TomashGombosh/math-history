@@ -1,6 +1,11 @@
 import type { Engine } from '@interfaces/types';
+import { decodeExclusiveStartKey, encodeExclusiveStartKey } from '@lib/pagination-cursor';
 import { ResponseWriter } from '@lib/response-writer';
-import { listTeachers } from '@services/teacher-service';
+import {
+	canTeachersUseDynamoCursor,
+	listTeachers,
+	listTeachersDynamoPage,
+} from '@services/teacher-service';
 
 export const publicResource = true;
 
@@ -28,6 +33,30 @@ export const handler = async (ctx: Engine) => {
 	const degreesParam = q.degrees ?? q['degrees[]'];
 	const positionsArr = normalizeToArray(positionsParam);
 	const degreesArr = normalizeToArray(degreesParam);
+
+	const useDynamoCursor =
+		canTeachersUseDynamoCursor({
+			search,
+			sortBy,
+			sortDir,
+			positions: positionsArr,
+			degrees: degreesArr,
+		}) &&
+		(String(q.cursor) === '1' || Boolean(q.exclusiveStartKey));
+
+	if (useDynamoCursor) {
+		const exclusiveStartKey = decodeExclusiveStartKey(
+			q.exclusiveStartKey ? String(q.exclusiveStartKey) : undefined,
+		);
+		const { teachers, lastEvaluatedKey } = await listTeachersDynamoPage({
+			limit,
+			exclusiveStartKey,
+		});
+		return ResponseWriter.Success({
+			teachers,
+			lastEvaluatedKey: encodeExclusiveStartKey(lastEvaluatedKey),
+		});
+	}
 
 	const result = await listTeachers({
 		page,
