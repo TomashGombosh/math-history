@@ -50,6 +50,7 @@ describe('api', () => {
 			'api/teachers/_id/put',
 			'api/teachers/_id/delete',
 			'api/graduates/get',
+			'api/gratitudes/get',
 			'api/graduates/years/get',
 			'api/graduates/specialties/get',
 			'api/graduates/_year/get',

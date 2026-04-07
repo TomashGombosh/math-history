@@ -9,5 +9,7 @@ export const schema = z
 		sortDir: z.string().optional(),
 		positions: z.union([z.string(), z.array(z.string())]).optional(),
 		degrees: z.union([z.string(), z.array(z.string())]).optional(),
+		cursor: z.union([z.string(), z.number()]).optional(),
+		exclusiveStartKey: z.string().optional(),
 	})
 	.passthrough();

@@ -1,33 +1,46 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { TeachersGridSkeleton } from "../components/skeletons/PageSkeletons";
 import { Seo } from "../lib/seo";
 import { breadcrumbJsonLd, getSiteUrl } from "../lib/seoHelpers";
 import { ROUTES } from "../router/paths";
 import { apiGet } from "../services/api";
-import type { TeacherDto, TeachersListResponse } from "../lib/apiTypes";
+import type { TeacherDto, TeachersCursorResponse } from "../lib/apiTypes";
 import "./TeachersPage.css";
 
 type Teacher = { id: number; slug: string; name: string; imageUrl?: string | null };
 
+const PAGE_SIZE = 24;
+
+function mapTeachers(dtos: TeacherDto[]): Teacher[] {
+  return dtos.map((t) => ({
+    id: t.id,
+    slug: t.slug,
+    name: t.name,
+    imageUrl: t.imageUrl,
+  }));
+}
+
 export default function TeachersPage() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [lastEvaluatedKey, setLastEvaluatedKey] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    void apiGet<TeachersListResponse>("/api/teachers", { page: 1, limit: 24 })
-      .then((r) =>
-        setTeachers(
-          r.teachers.map((t: TeacherDto) => ({
-            id: t.id,
-            slug: t.slug,
-            name: t.name,
-            imageUrl: t.imageUrl,
-          }))
-        )
-      )
-      .catch(() => setTeachers([]))
+    void apiGet<TeachersCursorResponse>("/api/teachers", { cursor: 1, limit: PAGE_SIZE })
+      .then((r) => {
+        if (cancelled) return;
+        setTeachers(mapTeachers(r.teachers));
+        setLastEvaluatedKey(r.lastEvaluatedKey ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setTeachers([]);
+          setLastEvaluatedKey(null);
+        }
+      })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
@@ -35,6 +48,24 @@ export default function TeachersPage() {
       cancelled = true;
     };
   }, []);
+
+  const loadMore = useCallback(() => {
+    if (!lastEvaluatedKey || loadingMore) return;
+    setLoadingMore(true);
+    void apiGet<TeachersCursorResponse>("/api/teachers", {
+      cursor: 1,
+      limit: PAGE_SIZE,
+      exclusiveStartKey: lastEvaluatedKey,
+    })
+      .then((r) => {
+        setTeachers((prev) => [...prev, ...mapTeachers(r.teachers)]);
+        setLastEvaluatedKey(r.lastEvaluatedKey ?? null);
+      })
+      .catch(() => {
+        setLastEvaluatedKey(null);
+      })
+      .finally(() => setLoadingMore(false));
+  }, [lastEvaluatedKey, loadingMore]);
 
   return (
     <div className="page-wrapper">
@@ -61,6 +92,13 @@ export default function TeachersPage() {
                 </Link>
               ))}
             </div>
+            {lastEvaluatedKey ? (
+              <div className="teachers-load-more">
+                <button type="button" onClick={loadMore} disabled={loadingMore}>
+                  {loadingMore ? "Завантаження…" : "Завантажити ще"}
+                </button>
+              </div>
+            ) : null}
             {!teachers.length ? <p className="teachers-empty-hint">Інформацію про викладачів не знайдено.</p> : null}
           </>
         )}

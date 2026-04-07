@@ -202,6 +202,44 @@ export interface ListTeachersParams {
 	degrees: string[];
 }
 
+/** True when listing can use a single DynamoDB query page (natural T# sort = by id ascending). */
+export function canTeachersUseDynamoCursor(params: {
+	search: string;
+	sortBy?: string;
+	sortDir: string;
+	positions: string[];
+	degrees: string[];
+}): boolean {
+	const q = params.search.trim();
+	if (q) return false;
+	if (params.positions.length || params.degrees.length) return false;
+	if (params.sortBy && params.sortBy !== '') return false;
+	if (params.sortDir && params.sortDir.toUpperCase() === 'DESC') return false;
+	return true;
+}
+
+export async function listTeachersDynamoPage(params: {
+	limit: number;
+	exclusiveStartKey?: Record<string, unknown>;
+}): Promise<{
+	teachers: TeacherPublic[];
+	lastEvaluatedKey?: Record<string, unknown>;
+}> {
+	const { items, lastEvaluatedKey } = await queryItems<TeacherItem>({
+		KeyConditionExpression: 'pk = :pk AND begins_with(sk, :pfx)',
+		ExpressionAttributeValues: {
+			':pk': PK.TEACHER,
+			':pfx': 'T#',
+		},
+		Limit: params.limit,
+		ExclusiveStartKey: params.exclusiveStartKey,
+	});
+	return {
+		teachers: items.map(toPublic),
+		lastEvaluatedKey,
+	};
+}
+
 export async function listTeachers(params: ListTeachersParams): Promise<{
 	teachers: TeacherPublic[];
 	total: number;
