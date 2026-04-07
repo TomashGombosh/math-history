@@ -49,6 +49,7 @@ export function summarizeAuthorizerForLog(event: ApiGatewayEventLike): Record<st
 	const auth = rc?.authorizer as Record<string, unknown> | undefined;
 	const httpAuth = rc?.http?.authorizer;
 	const jwtClaims = jwtClaimsFromEvent(event);
+	const cg = jwtClaims?.['cognito:groups'];
 	return {
 		hasRequestContext: Boolean(rc),
 		authorizerTopKeys: auth && typeof auth === 'object' ? Object.keys(auth) : [],
@@ -56,24 +57,61 @@ export function summarizeAuthorizerForLog(event: ApiGatewayEventLike): Record<st
 			httpAuth && typeof httpAuth === 'object' ? Object.keys(httpAuth as Record<string, unknown>) : [],
 		jwtClaimKeys: jwtClaims ? Object.keys(jwtClaims) : [],
 		hasCognitoGroupsKey: jwtClaims ? Object.prototype.hasOwnProperty.call(jwtClaims, 'cognito:groups') : false,
+		cognitoGroupsValueKind: cg === null || cg === undefined ? 'nullish' : Array.isArray(cg) ? 'array' : typeof cg,
 	};
 }
 
+function isAdminGroupToken(s: string): boolean {
+	return s.trim() === 'admin';
+}
+
+/**
+ * API Gateway often passes JWT claim values as strings (including JSON-serialized arrays).
+ */
 function groupsIncludeAdmin(groups: unknown): boolean {
+	if (groups == null) {
+		return false;
+	}
 	if (Array.isArray(groups)) {
-		return groups.some((g) => String(g) === 'admin');
+		return groups.some((g) => isAdminGroupToken(String(g)));
 	}
 	if (typeof groups === 'string') {
-		const s = groups.trim();
-		if (s.startsWith('[')) {
-			try {
-				const parsed = JSON.parse(s) as unknown;
-				return Array.isArray(parsed) && parsed.some((g) => String(g) === 'admin');
-			} catch {
-				/* fall through */
-			}
+		let cur: unknown = groups.trim();
+		if (isAdminGroupToken(String(cur))) {
+			return true;
 		}
-		return s.split(',').map((x) => x.trim()).includes('admin');
+		// Unwrap JSON strings (API Gateway may pass claim values as serialized JSON, sometimes double-encoded)
+		for (let depth = 0; depth < 5; depth++) {
+			if (Array.isArray(cur)) {
+				return cur.some((g) => isAdminGroupToken(String(g)));
+			}
+			if (typeof cur !== 'string') {
+				break;
+			}
+			const s = cur.trim();
+			if (isAdminGroupToken(s)) {
+				return true;
+			}
+			if (s.startsWith('[') || (s.startsWith('"') && s.includes('['))) {
+				try {
+					cur = JSON.parse(s) as unknown;
+					continue;
+				} catch {
+					break;
+				}
+			}
+			break;
+		}
+		const fallback = typeof cur === 'string' ? cur.trim() : String(groups).trim();
+		return fallback
+			.split(',')
+			.map((x) => x.trim())
+			.filter(Boolean)
+			.some((x) => isAdminGroupToken(x));
+	}
+	if (typeof groups === 'object') {
+		const vals = Object.values(groups as Record<string, unknown>);
+		return vals.some((g) => isAdminGroupToken(String(g)));
 	}
 	return false;
 }
