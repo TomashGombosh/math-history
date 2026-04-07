@@ -1,14 +1,30 @@
 import type { IRequest } from '@interfaces/types';
 
-type ApiGatewayEventLike = { requestContext?: { authorizer?: Record<string, unknown> } };
+type ApiGatewayEventLike = {
+	requestContext?: {
+		authorizer?: Record<string, unknown>;
+		http?: { authorizer?: { jwt?: { claims?: Record<string, unknown> } } };
+	};
+};
+
+function claimsFromAuthorizer(authorizer: Record<string, unknown> | undefined): Record<string, unknown> | null {
+	const jwt = (authorizer as { jwt?: { claims?: Record<string, unknown> } } | undefined)?.jwt?.claims;
+	return jwt && typeof jwt === 'object' ? jwt : null;
+}
 
 function jwtClaimsFromEvent(event: ApiGatewayEventLike): Record<string, unknown> | null {
-	const a = event.requestContext?.authorizer;
-	if (!a) {
+	const rc = event.requestContext;
+	if (!rc) {
 		return null;
 	}
-	const jwt = (a as { jwt?: { claims?: Record<string, unknown> } }).jwt?.claims;
-	return jwt && typeof jwt === 'object' ? jwt : null;
+	// HTTP API JWT authorizer: claims are usually under requestContext.authorizer.jwt.claims
+	const fromRoot = claimsFromAuthorizer(rc.authorizer as Record<string, unknown> | undefined);
+	if (fromRoot) {
+		return fromRoot;
+	}
+	// Some routes (e.g. viewer → CloudFront → API) expose the same shape under requestContext.http
+	const fromHttp = rc.http?.authorizer?.jwt?.claims;
+	return fromHttp && typeof fromHttp === 'object' ? fromHttp : null;
 }
 
 function groupsIncludeAdmin(groups: unknown): boolean {
