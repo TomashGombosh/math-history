@@ -40,3 +40,17 @@ export function withCognitoAdminAuthorizerUnderHttp<T extends Record<string, unk
 		},
 	};
 }
+
+/** Payload format 1.0 style: flat `authorizer.claims` without `jwt` wrapper (AWS HTTP API docs). */
+export function withCognitoAdminAuthorizerFlatClaims<T extends Record<string, unknown>>(
+	base: T,
+): T & { authorizer: { claims: { 'cognito:groups': string[] } } } {
+	return {
+		...base,
+		authorizer: {
+			claims: {
+				...adminJwtClaims,
+			},
+		},
+	};
+}
