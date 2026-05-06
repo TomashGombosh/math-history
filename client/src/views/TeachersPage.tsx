@@ -2,7 +2,14 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { TeachersGridSkeleton } from "../components/skeletons/PageSkeletons";
 import { Seo } from "../lib/seo";
-import { breadcrumbJsonLd, getSiteUrl } from "../lib/seoHelpers";
+import {
+  breadcrumbNode,
+  educationalOrganizationNode,
+  getSiteUrl,
+  pageGraphJsonLd,
+  webpageNode,
+  websiteNode,
+} from "../lib/seoHelpers";
 import { ROUTES } from "../router/paths";
 import { apiGet } from "../services/api";
 import type { TeacherDto, TeachersCursorResponse } from "../lib/apiTypes";
@@ -67,15 +74,31 @@ export default function TeachersPage() {
       .finally(() => setLoadingMore(false));
   }, [lastEvaluatedKey, loadingMore]);
 
+  const siteUrl = getSiteUrl();
+  const pageUrl = `${siteUrl}${ROUTES.teachers}`;
+  const description = "Список викладачів-математиків Ужгородського національного університету.";
+
   return (
     <div className="page-wrapper">
       <Seo
         title="Викладачі"
-        description="Список викладачів-математиків Ужгородського національного університету."
+        description={description}
         path={ROUTES.teachers}
-        jsonLd={breadcrumbJsonLd(getSiteUrl(), [
-          { name: "Головна", path: ROUTES.home },
-          { name: "Викладачі", path: ROUTES.teachers },
+        jsonLd={pageGraphJsonLd([
+          educationalOrganizationNode(siteUrl),
+          websiteNode(siteUrl),
+          webpageNode({
+            siteUrl,
+            pageUrl,
+            pageType: "CollectionPage",
+            name: "Викладачі кафедри математики УжНУ",
+            description,
+            breadcrumbRefId: `${pageUrl}#breadcrumb`,
+          }),
+          breadcrumbNode(siteUrl, pageUrl, [
+            { name: "Головна", path: ROUTES.home },
+            { name: "Викладачі", path: ROUTES.teachers },
+          ]),
         ])}
       />
       <div className="teachers-page">

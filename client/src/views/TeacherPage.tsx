@@ -3,10 +3,14 @@ import { Link, useParams } from "react-router-dom";
 import { Seo } from "../lib/seo";
 import {
   absoluteUrlForSeo,
-  breadcrumbJsonLd,
+  breadcrumbNode,
   buildTeacherMetaDescription,
+  educationalOrganizationNode,
   getSiteUrl,
-  teacherPersonJsonLd,
+  pageGraphJsonLd,
+  teacherPersonNode,
+  webpageNode,
+  websiteNode,
 } from "../lib/seoHelpers";
 import { ROUTES } from "../router/paths";
 import { apiGet } from "../services/api";
@@ -81,14 +85,25 @@ function TeacherProfile({ slug }: { slug: string }) {
         path={pagePath}
         ogType="article"
         ogImage={ogImage}
-        jsonLd={[
-          breadcrumbJsonLd(siteUrl, [
+        jsonLd={pageGraphJsonLd([
+          educationalOrganizationNode(siteUrl),
+          websiteNode(siteUrl),
+          webpageNode({
+            siteUrl,
+            pageUrl,
+            pageType: "ProfilePage",
+            name: `${teacher.name} — викладач кафедри математики УжНУ`,
+            description: metaDescription,
+            mainEntityRefId: `${pageUrl}#person`,
+            breadcrumbRefId: `${pageUrl}#breadcrumb`,
+          }),
+          breadcrumbNode(siteUrl, pageUrl, [
             { name: "Головна", path: ROUTES.home },
             { name: "Викладачі", path: ROUTES.teachers },
             { name: teacher.name, path: pagePath },
           ]),
-          teacherPersonJsonLd(pageUrl, teacher, ogImage),
-        ]}
+          teacherPersonNode(siteUrl, pageUrl, teacher, ogImage),
+        ])}
       />
       <div className="header">
         <div className="photo">{teacher.imageUrl ? <img src={teacher.imageUrl} alt={teacher.name} /> : null}</div>

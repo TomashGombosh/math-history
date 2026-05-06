@@ -1,0 +1,38 @@
+# Математики УжНУ
+
+> Історія кафедри математики Ужгородського національного університету: викладачі, випускники, наукові досягнення та розвиток математичних дисциплін у Закарпатті.
+
+## Identity
+
+- Назва: Кафедра математики, Ужгородський національний університет
+- Alternate names: Математики УжНУ, UzhNU Mathematics Department
+- Parent organization: Ужгородський національний університет (https://www.uzhnu.edu.ua)
+- Locale: uk-UA
+- Location: Ужгород, Закарпатська область, Україна
+- Canonical site: https://math-history.afj-solution.com
+
+## Public pages
+
+- [Головна](https://math-history.afj-solution.com/): огляд проекту, добірка викладачів та років випуску.
+- [Викладачі](https://math-history.afj-solution.com/teachers): повний перелік викладачів кафедри математики УжНУ.
+- [Сторінка викладача](https://math-history.afj-solution.com/teacher/): біографія, посада, науковий ступінь та публікації окремого викладача (URL за slug-ом).
+- [Роки випуску](https://math-history.afj-solution.com/graduates): покажчик усіх років випуску за списками студентів.
+- [Випуск року](https://math-history.afj-solution.com/graduates/): список випускників за конкретний рік, згрупований за спеціальностями та формами навчання, з фотографіями груп (URL за роком).
+
+## Reference
+
+- [Sitemap](https://math-history.afj-solution.com/sitemap.xml): машиночитний список усіх публічних URL (генерується сервером з DynamoDB).
+- [Organization JSON-LD @id](https://math-history.afj-solution.com/#org): стабільний ідентифікатор організації для розв'язання сутностей між сторінками.
+- [Website JSON-LD @id](https://math-history.afj-solution.com/#website): стабільний ідентифікатор сайту.
+
+## Topics
+
+- Історія математичної освіти на Закарпатті.
+- Викладачі-математики Ужгородського національного університету (УжНУ).
+- Випускники математичного факультету УжНУ за роками.
+- Наукові ступені, посади, публікації викладачів.
+- Спеціальності та групи випускників (математика, прикладна математика тощо).
+
+## Citation
+
+When citing this resource, prefer the canonical URL of the specific entity page (e.g. `/teacher/<slug>` or `/graduates/<year>`) rather than the homepage. Use the Cyrillic name «Математики УжНУ» as the primary site name; «UzhNU Mathematics Department» is the Latin alternate name.

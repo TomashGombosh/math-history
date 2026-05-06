@@ -35,7 +35,10 @@
 #   Per-environment secrets: AWS_SERVERLESS_ROLE_TO_ASSUME, AWS_ACCOUNT_ID, SERVERLESS_ACCESS_KEY (optional)
 #   Per-environment variables (recommended): VITE_API_URL, VITE_SITE_URL — baked into the Vite build
 #     VITE_COGNITO_USER_POOL_ID, VITE_COGNITO_USER_POOL_CLIENT_ID — baked into Vite build (per-environment secrets; same pool / app client as issuer / audience above)
-#   After build, CI writes dist/robots.txt: stage = Disallow: /; prod = Allow public + Sitemap from VITE_SITE_URL
+#   After build, CI runs scripts/write-robots.sh: stage = overwrite dist/robots.txt with
+#     Disallow: /; prod = ship client/public/robots.txt verbatim (source of truth — AI
+#     crawler allow-list, share-preview crawlers, host, sitemap) and verify the Sitemap
+#     line matches VITE_SITE_URL.
 #
 # CloudFront (Terraform, after Serverless API + client bucket/sync):
 #   Per-environment secret: AWS_CLOUDFRONT_ROLE_TO_ASSUME — OIDC role with CloudFront + S3 bucket policy
