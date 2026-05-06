@@ -1,0 +1,15 @@
+{
+  "name": "Математики УжНУ",
+  "short_name": "Математики УжНУ",
+  "description": "Історія кафедри математики Ужгородського національного університету.",
+  "lang": "uk",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#a3c8f2",
+  "theme_color": "#a3c8f2",
+  "icons": [
+    { "src": "/favicon.ico", "sizes": "any", "type": "image/x-icon" }
+  ]
+}

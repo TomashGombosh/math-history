@@ -11,7 +11,8 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
-    "thumbs": "node scripts/generate-thumbs.mjs"
+    "thumbs": "node scripts/generate-thumbs.mjs",
+    "og:generate": "node scripts/generate-og-image.mjs"
   },
   "dependencies": {
     "dotenv": "17.2.3",

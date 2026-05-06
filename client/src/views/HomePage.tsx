@@ -2,7 +2,16 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { HomePageSectionsSkeleton } from "../components/skeletons/PageSkeletons";
 import { Seo } from "../lib/seo";
-import { getSiteUrl, organizationJsonLd } from "../lib/seoHelpers";
+import {
+  breadcrumbNode,
+  educationalOrganizationNode,
+  faqNode,
+  getSiteUrl,
+  pageGraphJsonLd,
+  webpageNode,
+  websiteNode,
+  type FaqItem,
+} from "../lib/seoHelpers";
 import { ROUTES } from "../router/paths";
 import { apiGet } from "../services/api";
 import type { GraduateYearSummary, TeacherDto, TeachersCursorResponse } from "../lib/apiTypes";
@@ -10,6 +19,35 @@ import "./HomePage.css";
 
 type Teacher = { id: number; slug: string; name: string; imageUrl?: string | null };
 type YearItem = { year: number; totalStudents: number; totalWithHonours: number };
+
+const HOME_FAQ: FaqItem[] = [
+  {
+    question: "Що таке «Математики УжНУ»?",
+    answer:
+      "«Математики УжНУ» — це історичний архів кафедри математики Ужгородського національного університету: біографії викладачів, списки випускників за роками та матеріали про розвиток математичної освіти на Закарпатті.",
+  },
+  {
+    question: "Де знаходиться кафедра математики УжНУ?",
+    answer:
+      "Кафедра математики Ужгородського національного університету розташована у місті Ужгород, Закарпатська область, Україна (вул. Університетська, 14).",
+  },
+  {
+    question: "Як знайти інформацію про конкретного викладача математичного факультету УжНУ?",
+    answer:
+      "Перейдіть на сторінку «Викладачі» — там подано перелік усіх викладачів кафедри. Натисніть на ім'я викладача, щоб переглянути його посаду, науковий ступінь, біографію та публікації.",
+  },
+  {
+    question: "Як переглянути список випускників за конкретний рік?",
+    answer:
+      "На сторінці «Роки випуску» оберіть рік. Випускники згруповані за спеціальностями та формами навчання; випускники з відзнакою виділені.",
+  },
+  {
+    question: "What is the UzhNU Mathematics Department history archive?",
+    answer:
+      "Математики УжНУ (UzhNU Mathematics Department history archive) is a public Ukrainian heritage site documenting the faculty members, alumni, and academic history of the Mathematics Department at Uzhhorod National University.",
+    lang: "en",
+  },
+];
 
 function pickTeachers(dtos: TeacherDto[]): Teacher[] {
   return dtos.map((t) => ({
@@ -55,13 +93,30 @@ export default function HomePage() {
     };
   }, []);
 
+  const siteUrl = getSiteUrl();
+  const pageUrl = `${siteUrl}/`;
+  const homeDescription =
+    "Математики УжНУ — історія викладачів та випускників математичного факультету Ужгородського національного університету.";
+
   return (
     <div className="home">
       <Seo
         title="Головна"
-        description="Математики УжНУ — історія викладачів та випускників математичного факультету Ужгородського національного університету."
+        description={homeDescription}
         path={ROUTES.home}
-        jsonLd={organizationJsonLd(getSiteUrl())}
+        jsonLd={pageGraphJsonLd([
+          educationalOrganizationNode(siteUrl),
+          websiteNode(siteUrl),
+          webpageNode({
+            siteUrl,
+            pageUrl,
+            name: "Математики УжНУ — Головна",
+            description: homeDescription,
+            breadcrumbRefId: `${pageUrl}#breadcrumb`,
+          }),
+          breadcrumbNode(siteUrl, pageUrl, [{ name: "Головна", path: ROUTES.home }]),
+          faqNode(pageUrl, HOME_FAQ),
+        ])}
       />
       <section className="home-block intro-section">
         <h1>Математики УжНУ — історія викладачів та випускників</h1>
@@ -75,6 +130,11 @@ export default function HomePage() {
           кількість студентів, а також кількість тих, хто закінчив навчання з відзнакою. Це допомагає простежити
           розвиток факультету, кількісні зміни та успішність студентів у різні періоди.
         </p>
+        <address className="home-org-address">
+          <span lang="uk">Кафедра математики, Ужгородський національний університет</span>
+          {" — "}
+          <span lang="uk">Ужгород, Закарпатська область, Україна</span>
+        </address>
       </section>
       {loading ? (
         <HomePageSectionsSkeleton />
@@ -112,7 +172,9 @@ export default function HomePage() {
             <div className="years-grid">
               {years.map((item) => (
                 <Link key={item.year} to={ROUTES.graduatesYear(item.year)} className="year-card">
-                  <div className="year-card__year">{item.year}</div>
+                  <div className="year-card__year">
+                    <time dateTime={String(item.year)}>{item.year}</time>
+                  </div>
                   <div className="year-card__stats">
                     <div>К-ть випускників: {item.totalStudents}</div>
                     <div>З відзнакою: {item.totalWithHonours}</div>

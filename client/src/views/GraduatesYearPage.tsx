@@ -7,7 +7,15 @@ import { apiGet } from "../services/api";
 import type { GraduateCohortImage, GraduateYearDetail, GraduateYearSummary } from "../lib/apiTypes";
 import { graduateImageOriginalUrl, graduateImageWebpUrl } from "../lib/graduateImages";
 import { Seo } from "../lib/seo";
-import { breadcrumbJsonLd, getSiteUrl, graduateYearEventJsonLd } from "../lib/seoHelpers";
+import {
+  breadcrumbNode,
+  educationalOrganizationNode,
+  getSiteUrl,
+  graduateYearEventNode,
+  pageGraphJsonLd,
+  webpageNode,
+  websiteNode,
+} from "../lib/seoHelpers";
 import "./GraduatesYearPage.css";
 
 type YearItem = { year: number };
@@ -278,16 +286,29 @@ export default function GraduatesYearPage() {
         title={`Випуск ${year} року`}
         description={yearDescription}
         path={yearPath}
-        jsonLd={[
-          breadcrumbJsonLd(siteUrl, [
+        jsonLd={pageGraphJsonLd([
+          educationalOrganizationNode(siteUrl),
+          websiteNode(siteUrl),
+          webpageNode({
+            siteUrl,
+            pageUrl,
+            pageType: "CollectionPage",
+            name: `Випуск ${year} року — Математики УжНУ`,
+            description: yearDescription,
+            mainEntityRefId: `${pageUrl}#event`,
+            breadcrumbRefId: `${pageUrl}#breadcrumb`,
+          }),
+          breadcrumbNode(siteUrl, pageUrl, [
             { name: "Головна", path: ROUTES.home },
             { name: "Роки випуску", path: ROUTES.graduates },
             { name: `Випуск ${year} року`, path: yearPath },
           ]),
-          graduateYearEventJsonLd(pageUrl, year, yearDescription),
-        ]}
+          graduateYearEventNode(siteUrl, pageUrl, year, yearDescription),
+        ])}
       />
-      <h1>Випуск {year} року</h1>
+      <h1>
+        Випуск <time dateTime={String(year)}>{year}</time> року
+      </h1>
       <p className="page-intro">
         На цій сторінці подано список випускників математичного факультету УжНУ {year} року за спеціальностями та формами
         навчання. Відмінники виділені жирним шрифтом.
