@@ -1,0 +1,136 @@
+---
+description: Generative-engine optimization (GEO/LLMO) — make math-history.afj-solution.com discoverable, citable, and linkable by AI search and chat assistants (ChatGPT, Claude, Perplexity, Gemini, You.com, Copilot). Apply when editing AI-crawler permissions, the /llms.txt manifest, JSON-LD identity, or AI-oriented metadata in the React SPA.
+globs: "**/{robots.txt,llms.txt,llms-full.txt,index.html,seo.tsx,seoHelpers.ts}"
+alwaysApply: false
+---
+
+# AI / LLM Discovery Rules (Math History UzhNU)
+
+This site is a **public Ukrainian university-heritage resource** (Кафедра математики, Ужгородський національний університет). The goal of these rules is to maximize the chance that a Ukrainian-speaking student, researcher, or alumnus who asks an AI assistant about UzhNU mathematics — in Ukrainian or in English — finds and is correctly cited to this site.
+
+Optimize for **AI discovery, citation, and answerability**, not training-corpus extraction in isolation.
+
+## 1) Crawler stance — `client/public/robots.txt`
+
+Keep one consolidated `User-agent: *` block, then add explicit allow rules for the crawlers below. Each entry must include both a comment with the crawler's purpose and an explicit `Allow: /` (or scoped allow) to make intent unambiguous.
+
+**Allow (search & answer):**
+- `OAI-SearchBot` — ChatGPT search results citation crawler. Allow.
+- `ChatGPT-User` — ChatGPT on-demand fetch (when a user pastes a URL). Allow.
+- `PerplexityBot`, `Perplexity-User` — Perplexity search & on-demand. Allow.
+- `Google-Extended` — controls Gemini/AI Overviews use of content already in Google index. Allow.
+- `Applebot-Extended` — Apple Intelligence / Siri search. Allow.
+- `Bingbot`, `Microsoft Copilot`-relevant agents — already allowed via `*`; do not block.
+- `YouBot` — You.com. Allow.
+- `Amazonbot` — Alexa / Amazon AI. Allow.
+- `Meta-ExternalAgent`, `Meta-ExternalFetcher` — Meta AI. Allow.
+- `cohere-ai` — Cohere. Allow.
+- `Diffbot` — knowledge-graph extractors. Allow.
+- `facebookexternalhit`, `Twitterbot`, `TelegramBot`, `ViberBot` — share-preview crawlers. Allow (Telegram/Viber are critical share surfaces in UA).
+
+**Allow (training, but document explicitly):**
+- `GPTBot` — OpenAI training. Allow with comment `# public university heritage content`.
+- `ClaudeBot`, `anthropic-ai`, `Claude-Web` — Anthropic training/fetch. Allow.
+- `CCBot` — Common Crawl (consumed by many LLMs). Allow.
+
+**Disallow (defensive):**
+- `/admin/`, `/admin`, `/login`, `/api/`, `/*?*` — non-public surface and query-string variants.
+
+Always end with `Sitemap: https://math-history.afj-solution.com/sitemap.xml` and `Host: math-history.afj-solution.com`.
+
+Never use a blanket disallow for AI crawlers. If licensing or load concerns arise later, narrow per-bot — do not collapse all AI bots under `User-agent: *` denial.
+
+## 2) `/llms.txt` manifest
+
+Maintain `client/public/llms.txt` as a Markdown index for LLM ingestion (Anthropic-proposed convention; Perplexity and several AI search vendors follow it). Required structure:
+
+```markdown
+# Математики УжНУ
+
+> Історія кафедри математики Ужгородського національного університету: викладачі, випускники, наукові досягнення.
+
+## Public pages
+- [Головна](https://math-history.afj-solution.com/)
+- [Викладачі](https://math-history.afj-solution.com/teachers)
+- [Роки випуску](https://math-history.afj-solution.com/graduates)
+
+## Entities
+- [Кафедра математики УжНУ — JSON-LD identity](https://math-history.afj-solution.com/#org)
+- [Список викладачів (sitemap)](https://math-history.afj-solution.com/sitemap.xml)
+```
+
+Optional `client/public/llms-full.txt` ships a flattened markdown export of stable content (organization description, FAQ, current teacher index). Generate at build time so it stays current.
+
+`llms.txt` MUST be kept in sync with the canonical sitemap. If a route is added or removed, update both files in the same PR.
+
+## 3) JSON-LD identity — `@graph` with stable `@id`
+
+Convert the per-page JSON-LD blocks (organization, breadcrumb, person, event) into a single `@graph` per page, with stable `@id` IRIs so AI extractors can resolve cross-references between entities:
+
+- Organization → `@id: "https://math-history.afj-solution.com/#org"`
+- Website → `@id: "https://math-history.afj-solution.com/#website"`
+- WebPage → `@id: "${pageUrl}#webpage"`, with `mainEntity: { @id: "${pageUrl}#person" }` for teacher pages
+- Person → `@id: "${pageUrl}#person"`, with `affiliation: { @id: "https://math-history.afj-solution.com/#org" }`
+- BreadcrumbList → `@id: "${pageUrl}#breadcrumb"`
+
+Every node MUST carry `inLanguage: "uk"`. The Organization node MUST include `alternateName` covering the Latin transliteration (`UzhNU Mathematics Department`) so English-speaking AI assistants resolve the same entity.
+
+Do this by extending `client/src/lib/seoHelpers.ts` — keep the per-helper functions but add a `pageGraphJsonLd(parts)` composer used by `Seo` callers in `client/src/views/*`.
+
+## 4) On-page AI signals
+
+These are crawler-readable hints that improve LLM extraction quality:
+
+- Single `<h1>` per page with the canonical entity name (Cyrillic primary).
+- Use `<time datetime="YYYY-MM-DD">` for dates (graduation years already qualify; wrap them).
+- Use `<dfn>` once on the first occurrence of a term that needs definition (e.g. «кафедра», «факультет»).
+- Use `<address>` for the organization's postal address on the homepage.
+- Provide `lang` attribute overrides on quoted English/Latin segments (`<span lang="en">…</span>`) so AI extractors do not misclassify language.
+- Maintain descriptive Ukrainian `alt` text on photos; include both teacher name (Cyrillic) and role for portraits.
+
+## 5) FAQPage schema
+
+Add a site-wide FAQ as JSON-LD `FAQPage` on the homepage that answers the questions LLMs are most likely to receive:
+
+- "Що таке Математики УжНУ?"
+- "Де знаходиться кафедра математики УжНУ?"
+- "Як знайти інформацію про викладача математичного факультету УжНУ?"
+- "Як подивитися список випускників за рік?"
+
+Implementation lives next to `organizationJsonLd` in `client/src/lib/seoHelpers.ts` and is composed into the homepage `@graph`.
+
+## 6) Static-shell fallback
+
+`client/index.html` must carry **non-JS-dependent** title, description, OG image, and a single inline `EducationalOrganization` JSON-LD. LLM crawlers vary in JS execution; the static shell guarantees a baseline citation surface even if `react-helmet-async` does not run. Keep this in sync with `SEO_SITE_NAME` / `getSiteUrl` defaults — drift here causes mismatched canonical/OG values.
+
+## 7) Sitemap parity
+
+The dynamic sitemap is owned by **`server_v2/src/modules/sitemap.xml/get/index.ts`** + **`server_v2/src/services/sitemap-service.ts`**. It pulls teacher slugs (`listTeacherSlugsForSitemap`) and graduate years (`listGraduateYearsForSitemap`) from DynamoDB and serves `/sitemap.xml` via Lambda + CloudFront, cached for 3600s. CloudFront must route `/sitemap.xml` to this Lambda.
+
+When you add a new public route or a new entity type:
+
+- Update `buildSitemapXml` to emit the route.
+- Add a corresponding `list…ForSitemap` service if a new entity type appears.
+- Confirm `client/public/robots.txt` still references `Sitemap: https://math-history.afj-solution.com/sitemap.xml`.
+- Confirm `client/public/llms.txt` mentions the new public surface.
+
+**Never** ship a static `client/public/sitemap.xml` — it would shadow the Lambda response on CloudFront if the SPA origin is checked first. The sitemap is a Lambda-served, edge-cached resource.
+
+## 8) Forbidden practices
+
+- Do **not** cloak: same content must be served to users and to AI crawlers. No UA-conditional HTML.
+- Do **not** keyword-stuff Ukrainian/English variants in meta tags. Use `alternateName` in JSON-LD instead.
+- Do **not** rely solely on JSON-LD without matching on-page text. AI extractors verify claims against visible content.
+- Do **not** add per-bot `Disallow` rules without an explicit justification comment.
+- Do **not** put PII (private student records, emails) into structured data exposed to AI crawlers.
+
+## 9) Definition of done (per change)
+
+When a change touches AI-discovery surface, verify:
+
+- [ ] `client/public/robots.txt` lists all relevant AI crawlers with intent comments.
+- [ ] `client/public/llms.txt` reflects the current public route set.
+- [ ] Affected page emits a `@graph`-linked JSON-LD with stable `@id` and `inLanguage: "uk"`.
+- [ ] `client/index.html` static shell still matches `SEO_SITE_NAME` and current canonical defaults.
+- [ ] `server_v2/src/services/sitemap-service.ts#buildSitemapXml` covers any new public route (sitemap is Lambda-owned, not static).
+- [ ] No PII or admin-only content leaks into structured data.

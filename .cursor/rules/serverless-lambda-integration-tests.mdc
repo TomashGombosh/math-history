@@ -1,0 +1,84 @@
+---
+description: Co-located Jest integration tests for server_v2 (serverless-jest-plugin, modules/**/test.ts)
+globs:
+  - "**/server_v2/src/modules/**/test.ts"
+  - "**/server_v2/src/tests/app.ts"
+  - "**/server_v2/scripts/generate-test-tree.cjs"
+alwaysApply: false
+---
+
+# Serverless Lambda integration tests (`server_v2`)
+
+Tests invoke real handlers via **`lambda-wrapper`**, loaded from **`serverless-jest-plugin`** (`require('serverless-jest-plugin').lambdaWrapper` is the full **`lambda-wrapper` module**, so use **`lambdaWrapper.wrap(mod, { handler: 'handler' | 'consumer' })`** — not `lambdaWrapper` as the `wrap` function alone).
+
+Jest runs a single entry: **`jest.config.cjs`** → `testMatch`: **`.build/tests/app.js`** (compile `src/tests/app.ts` first).
+
+## Harness (`src/tests/app.ts`)
+
+- **`beforeAll`**: `getConfig()` then **`getCache(config)`** from `src/lib/cache.ts` (extend when adding Redis or similar).
+- **Three wrappers**:
+  - **HTTP API** — `src/index.ts` → `handler`
+  - **Cron** — `src/cron/index.ts` → `handler` (paths under `src/cron/**`; tests use entries like `../cron/inventory` in the `TESTS` list)
+  - **Queues** — `src/queues/index.ts` → `consumer` (paths under `src/queues/**`; entries like `../queues/jobs`)
+- **`require(\`${moduleFolderPath}/${module}/test.js\`)`** resolves paths such as **`../cron/foo`** to **`src/cron/foo/test.ts`** (because `moduleFolderPath` is **`src/modules`**).
+- **Which wrapper is passed** to each `test.ts`: `module.includes('/cron/')` → cron wrapper; `module.includes('/queues/')` → queues wrapper; else API wrapper.
+- **`afterAll`**: `cache.disconnect()`, then **`setTimeout(() => process.exit(ret), 1000)`** so Jest can print the summary (may trip **`detectOpenHandles`** in dev; `forceExit` is already set in Jest config).
+
+## `TESTS` env and default list
+
+- **`TESTS`** is a comma-separated list of module-relative paths (same strings as in **`require(...)`**).
+- Default array lives in **`app.ts`** after `||` — keep it in sync when adding suites (and for the **test-tree** generator below).
+
+## Where to put `test.ts` files
+
+- **HTTP routes**: next to the handler under **`src/modules/`** (e.g. `modules/api/graduates/get/test.ts`).
+- **Cron / queue tests**: under **`src/cron/...`** or **`src/queues/...`** with a `test.ts`, referenced from the default list or **`TESTS`** using **`../cron/...`** or **`../queues/...`**.
+
+## File shape (required)
+
+- Export **`module.exports = (wrapped, expect, requestContext) => describe(...)`** (factory + `describe`).
+- Shared values: **`tests/consts`** (and **`JWT`** / env from `.env` for **`NODE_ENV=test`**).
+
+## Invoking the handler
+
+- **`await wrapped.run({ requestContext, path, method, headers, queryStringParameters?, body? })`**
+- **`path`** must match **`resolveModulePath`** / **`normalizeApiSegments`** in **`src/lib/route-resolve.ts`** (e.g. **`/api/graduates`** for **`api/graduates/get`**).
+- Protected routes: pass **`requestContext`** from **`withCognitoAdminAuthorizer(requestContext)`** (see **`src/tests/helpers/http.ts`**) to mimic API Gateway Cognito JWT claims; public routes use the plain **`requestContext`**.
+
+## Assertions
+
+- Check **`statusCode`**, **`body`**, then **`JSON.parse`** when appropriate.
+
+## `npm test` and local AWS emulation
+
+- **`npm test`** sets **`NODE_ENV=test`** and **`NODE_OPTIONS=--experimental-vm-modules`** (needed for AWS SDK v3 under Jest).
+- Point **`DYNAMODB_ENDPOINT`** at **DynamoDB Local** and ensure the table exists (repo **`docker-compose.yml`**: **`dynamodb`** + **`dynamodb-migrate`**).
+- For **S3** / **`POST /api/upload/presign`**: set **`S3_ENDPOINT`** (e.g. MinIO `http://127.0.0.1:9000`), **`S3_DATA_BUCKET`**, and **`AWS_ACCESS_KEY_ID`** / **`AWS_SECRET_ACCESS_KEY`** matching the compose services. **`getS3Client()`** uses path-style signing when **`S3_ENDPOINT`** is set.
+
+## Test coverage tree generator
+
+- Script: **`server_v2/scripts/generate-test-tree.cjs`**
+- Run: **`npm run test:tree`** from **`server_v2`** (or **`node server_v2/scripts/generate-test-tree.cjs`** from repo root).
+- Walks **`src/modules`**, parses the **default** `TESTS` list from **`src/tests/app.ts`**, writes **`server_v2/test/test-tree.yml`** (nested YAML with **`is_readme`**, **`is_test`**, **`is_covered`**, etc.).
+- Do not use **`*/**`** inside block comments in TypeScript near route globs — **`**/`** closes the comment early.
+
+## Minimal example (`modules/api/graduates/get/test.ts`)
+
+```ts
+module.exports = (wrapped: any, expect: any, requestContext: any) =>
+	describe('Graduates GET', () => {
+		it('should return 200 and a body', async () => {
+			const response = await wrapped.run({
+				requestContext,
+				path: '/api/graduates',
+				method: 'GET',
+				headers: { 'Content-Type': 'application/json' },
+			});
+
+			expect(response.statusCode).toEqual(200);
+			expect(response.body).toBeDefined();
+			const body = JSON.parse(response.body as string);
+			expect(Array.isArray(body)).toBe(true);
+		});
+	});
+```

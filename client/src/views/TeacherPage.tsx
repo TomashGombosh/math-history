@@ -1,0 +1,169 @@
+import { useEffect, useMemo, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { Seo } from "../lib/seo";
+import {
+  absoluteUrlForSeo,
+  breadcrumbNode,
+  buildTeacherMetaDescription,
+  educationalOrganizationNode,
+  getSiteUrl,
+  pageGraphJsonLd,
+  teacherPersonNode,
+  webpageNode,
+  websiteNode,
+} from "../lib/seoHelpers";
+import { ROUTES } from "../router/paths";
+import { apiGet } from "../services/api";
+import type { LayoutConfigResponse, TeacherDto } from "../lib/apiTypes";
+import {
+  normalizeTeacherPageLayout,
+  parsePublicationEntry,
+  teacherHasSectionContent,
+  type TeacherPageState,
+} from "../lib/teacherPageLayout";
+import { TeacherDetailSkeleton } from "../components/skeletons/PageSkeletons";
+import "./TeacherPage.css";
+
+function TeacherProfile({ slug }: { slug: string }) {
+  /** `undefined` = load in progress; `null` = not found; otherwise loaded. */
+  const [teacher, setTeacher] = useState<TeacherPageState | null | undefined>(undefined);
+  const [layout, setLayout] = useState<LayoutConfigResponse>(() => normalizeTeacherPageLayout({}));
+
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.all([
+      apiGet<TeacherDto>(`/api/teachers/by-slug/${encodeURIComponent(slug)}`),
+      apiGet<LayoutConfigResponse>("/api/layout").catch(() => ({})),
+    ])
+      .then(([t, rawLayout]) => {
+        if (cancelled) return;
+        setTeacher({
+          name: t.name,
+          imageUrl: t.imageUrl,
+          title: t.title,
+          academicDegree: t.academicDegree,
+          position: t.position,
+          faculty: t.faculty,
+          shortInformation: t.shortInformation,
+          bio: t.bio,
+          publications: Array.isArray(t.publications) ? t.publications : [],
+        });
+        setLayout(normalizeTeacherPageLayout(rawLayout));
+      })
+      .catch(() => {
+        if (!cancelled) setTeacher(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [slug]);
+
+  const sortedSections = useMemo(
+    () => (layout.sections ?? []).filter((s) => !!s),
+    [layout.sections],
+  );
+
+  if (teacher === undefined) {
+    return <TeacherDetailSkeleton />;
+  }
+
+  if (teacher === null) {
+    return <div className="teacher-page">Викладача не знайдено</div>;
+  }
+
+  const siteUrl = getSiteUrl();
+  const pagePath = ROUTES.teacherSlug(slug);
+  const pageUrl = `${siteUrl}${pagePath}`;
+  const metaDescription = buildTeacherMetaDescription(teacher);
+  const ogImage = absoluteUrlForSeo(siteUrl, teacher.imageUrl);
+
+  return (
+    <div className="teacher-page">
+      <Seo
+        title={`${teacher.name} — викладач`}
+        description={metaDescription}
+        path={pagePath}
+        ogType="article"
+        ogImage={ogImage}
+        jsonLd={pageGraphJsonLd([
+          educationalOrganizationNode(siteUrl),
+          websiteNode(siteUrl),
+          webpageNode({
+            siteUrl,
+            pageUrl,
+            pageType: "ProfilePage",
+            name: `${teacher.name} — викладач кафедри математики УжНУ`,
+            description: metaDescription,
+            mainEntityRefId: `${pageUrl}#person`,
+            breadcrumbRefId: `${pageUrl}#breadcrumb`,
+          }),
+          breadcrumbNode(siteUrl, pageUrl, [
+            { name: "Головна", path: ROUTES.home },
+            { name: "Викладачі", path: ROUTES.teachers },
+            { name: teacher.name, path: pagePath },
+          ]),
+          teacherPersonNode(siteUrl, pageUrl, teacher, ogImage),
+        ])}
+      />
+      <div className="header">
+        <div className="photo">{teacher.imageUrl ? <img src={teacher.imageUrl} alt={teacher.name} /> : null}</div>
+        <div className="info">
+          <h1>{teacher.name}</h1>
+          <p>{teacher.academicDegree ?? ""}</p>
+          <p>{teacher.position ?? ""}</p>
+        </div>
+      </div>
+      {sortedSections.map((sec) => {
+        if (!sec.visible || !teacherHasSectionContent(teacher, sec.id)) return null;
+        if (sec.id === "shortInformation") {
+          return (
+            <section key={sec.id} className="section">
+              <h2>{sec.title}</h2>
+              <p className="multiline">{teacher.shortInformation ?? ""}</p>
+            </section>
+          );
+        }
+        if (sec.id === "bio") {
+          return (
+            <section key={sec.id} className="section">
+              <h2>{sec.title}</h2>
+              <p className="multiline">{teacher.bio ?? ""}</p>
+            </section>
+          );
+        }
+        if (sec.id === "publications") {
+          const pubs = teacher.publications
+            .map((raw, i) => parsePublicationEntry(raw, i))
+            .filter((p): p is NonNullable<typeof p> => p != null);
+          return (
+            <section key={sec.id} className="section">
+              <h2>{sec.title}</h2>
+              <ol className="pub-list">
+                {pubs.map((pub) => (
+                  <li key={pub.key}>
+                    {pub.year != null && pub.year !== "" ? <span>({pub.year}) </span> : null}
+                    {pub.text}
+                  </li>
+                ))}
+              </ol>
+            </section>
+          );
+        }
+        return null;
+      })}
+      <div className="back-link">
+        <Link to={ROUTES.teachers}>← Повернутися до списку</Link>
+      </div>
+    </div>
+  );
+}
+
+export default function TeacherPage() {
+  const { slug = "" } = useParams();
+
+  if (!slug) {
+    return <div className="teacher-page">Викладача не знайдено</div>;
+  }
+
+  return <TeacherProfile key={slug} slug={slug} />;
+}

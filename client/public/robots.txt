@@ -1,0 +1,96 @@
+# Math History UzhNU — robots policy.
+# Public university heritage site. Allow AI search/citation crawlers; block admin/API surface.
+# CI may overwrite per environment (dev/staging deny all; prod = this file).
+
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /admin
+Disallow: /login
+Disallow: /api/
+# Avoid indexing query-string variants of public listings (filters/pagination).
+Disallow: /*?*
+
+# --- Mainstream search ---
+User-agent: Googlebot
+Allow: /
+User-agent: Googlebot-Image
+Allow: /teachers_img/
+Allow: /graduates_img/
+User-agent: Bingbot
+Allow: /
+
+# --- AI search & on-demand answer crawlers ---
+
+# OpenAI ChatGPT search citation crawler
+User-agent: OAI-SearchBot
+Allow: /
+
+# OpenAI on-demand fetch (user pastes a URL into ChatGPT)
+User-agent: ChatGPT-User
+Allow: /
+
+# Perplexity search index + on-demand fetch
+User-agent: PerplexityBot
+Allow: /
+User-agent: Perplexity-User
+Allow: /
+
+# Google Gemini / AI Overviews opt-in (separate from Googlebot)
+User-agent: Google-Extended
+Allow: /
+
+# Apple Intelligence / Siri AI search (separate from Applebot)
+User-agent: Applebot-Extended
+Allow: /
+
+# You.com
+User-agent: YouBot
+Allow: /
+
+# Amazon Alexa / Rufus
+User-agent: Amazonbot
+Allow: /
+
+# Meta AI search & on-demand
+User-agent: Meta-ExternalAgent
+Allow: /
+User-agent: Meta-ExternalFetcher
+Allow: /
+
+# Cohere
+User-agent: cohere-ai
+Allow: /
+
+# Diffbot knowledge-graph extractor
+User-agent: Diffbot
+Allow: /
+
+# --- AI training corpus crawlers (allowed: public university heritage content) ---
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+User-agent: anthropic-ai
+Allow: /
+User-agent: Claude-Web
+Allow: /
+
+# Common Crawl — consumed by many LLM training pipelines
+User-agent: CCBot
+Allow: /
+
+# --- Share-preview crawlers (Telegram & Viber are critical share surfaces in UA) ---
+User-agent: TelegramBot
+Allow: /
+User-agent: ViberBot
+Allow: /
+User-agent: facebookexternalhit
+Allow: /
+User-agent: Twitterbot
+Allow: /
+
+Sitemap: https://math-history.afj-solution.com/sitemap.xml
+Host: math-history.afj-solution.com

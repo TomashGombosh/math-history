@@ -1,3 +1,9 @@
+/**
+ * LEGACY — Nuxt `server/` only: HS256 JWT signed with `JWT_SECRET`.
+ *
+ * Production uses `server_v2` + Amazon Cognito (API Gateway JWT authorizer + `admin-auth.ts`).
+ * The React client authenticates with Amplify SRP; do not add new features here.
+ */
 import jwt from "jsonwebtoken";
 import { H3Event, getHeader, createError } from "h3";
 

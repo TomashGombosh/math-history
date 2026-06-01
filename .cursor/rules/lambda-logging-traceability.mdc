@@ -1,0 +1,72 @@
+---
+description: Logging, traceability, and visibility for AWS Lambda and Serverless Framework
+globs: "**/{server,server_v2}/**/*.{ts,js}"
+alwaysApply: false
+---
+
+# Lambda logging, traceability, and visibility
+
+Applies to Lambda handler code and shared server libraries. Pair with `serverless-framework-rules.mdc` for deployment config.
+
+## Output and format
+
+- Write logs to **stdout/stderr only** (never to files on `/tmp` for primary logging). CloudWatch captures stream output.
+- Prefer **one JSON object per line** (structured logging) so CloudWatch Logs Insights can query fields (`@message`, `@requestId`, custom keys).
+- Include a **`message`** (or `msg`) string plus **context fields** as siblings; avoid string-building huge unstructured blobs.
+- Use **stable field names** across handlers: e.g. `level`, `msg`, `requestId`, `route`, `durationMs`, `coldStart`, `err` (for error payloads).
+- **Sample or downgrade** high-cardinality or high-volume debug logs in production; default to `info`/`warn`/`error` for steady-state.
+
+## What to log (and what not to)
+
+- Log **business-significant events**, **downstream call failures**, and **validation failures** with enough context to reproduce (ids, resource names), not full payloads by default.
+- **Never log secrets**: tokens, `Authorization` headers, presigned URLs, passwords, raw cookies, or private keys. Redact or omit.
+- **Minimize PII**; if required for support, log opaque ids and treat extra personal data as sensitive.
+- On errors, log **`name`**, **`message`**, and **`stack`** (and **`cause`** when present). Avoid double-logging the same error at every layer unless each layer adds new context.
+
+## Request and correlation
+
+- Rely on Lambda’s **`context.awsRequestId`** (and API Gateway request id when applicable) as the primary **request correlation id** in application logs.
+- If using **X-Ray** or **OpenTelemetry**, include **trace/span ids** in log lines when available so logs can be joined to traces.
+- For async flows (SQS, EventBridge), log **message id** / **event identifiers** from the triggering event (not the whole body unless necessary and safe).
+
+## AWS SDK noise
+
+- Control AWS SDK verbosity with **`AWS_SDK_LOG_LEVEL`** (or project-specific helpers). Avoid `debug` in production unless diagnosing a specific issue.
+
+## Serverless Framework (visibility hooks)
+
+- Set **log retention** (`provider.logRetentionInDays` or per-function) so costs and clutter stay predictable.
+- Enable **Lambda tracing** where you use X-Ray (`tracing` on provider/function as appropriate).
+- Use **tags** on functions/stacks for cost and ownership; keep **stage** (`dev` / `prod`) explicit in env and logs.
+- Prefer **structured logs + alarms** (errors, throttles, duration) over ad-hoc permanent `console.debug` in hot paths.
+
+## Quick pattern (TypeScript)
+
+```typescript
+// Prefer structured single-line JSON
+console.log(
+  JSON.stringify({
+    level: 'info',
+    msg: 'Graduate year fetched',
+    requestId: context.awsRequestId,
+    year: yearParam,
+    durationMs: Date.now() - start,
+  }),
+);
+
+// Error path
+console.error(
+  JSON.stringify({
+    level: 'error',
+    msg: 'DynamoDB query failed',
+    requestId: context.awsRequestId,
+    err: { name: err.name, message: err.message, stack: err.stack },
+  }),
+);
+```
+
+## Anti-patterns
+
+- `console.log` of **entire** `event` / `process.env` in shared or production code.
+- Unbounded **string concatenation** logs with no parseable fields.
+- Different log shapes per endpoint with no shared **correlation id** field.

@@ -1,0 +1,81 @@
+import {
+	withCognitoAdminAuthorizer,
+	withCognitoAdminAuthorizerFlatClaims,
+	withCognitoAdminAuthorizerUnderHttp,
+	jsonBody,
+} from '@tests/helpers/http.js';
+
+module.exports = (wrapped: any, expect: any, requestContext: any) =>
+	describe('POST /api/teachers', () => {
+		const adminRC = withCognitoAdminAuthorizer(requestContext);
+		const adminRCHttp = withCognitoAdminAuthorizerUnderHttp(requestContext);
+		const adminRCFlat = withCognitoAdminAuthorizerFlatClaims(requestContext);
+		const uniqueSuffix = Date.now().toString(36);
+
+		it('creates a teacher and returns id and slug', async () => {
+			const res = await wrapped.run({
+				requestContext: adminRC,
+				path: '/api/teachers',
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					name: `Integration Teacher ${uniqueSuffix}`,
+					position: 'Assoc. Prof.',
+					faculty: 'Math',
+					academicDegree: 'Ph.D.',
+				}),
+			});
+			expect(res.statusCode).toBe(200);
+			const body = jsonBody(res, expect) as { id: number; slug: string; name: string };
+			expect(typeof body.id).toBe('number');
+			expect(body.slug.length).toBeGreaterThan(0);
+			expect(body.name).toContain('Integration Teacher');
+		});
+
+		it('accepts flat requestContext.authorizer.claims (payload 1.0 shape)', async () => {
+			const res = await wrapped.run({
+				requestContext: adminRCFlat,
+				path: '/api/teachers',
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					name: `FlatClaims Teacher ${uniqueSuffix}`,
+					position: 'Assoc. Prof.',
+					faculty: 'Math',
+					academicDegree: 'Ph.D.',
+				}),
+			});
+			expect(res.statusCode).toBe(200);
+			const body = jsonBody(res, expect) as { name: string };
+			expect(body.name).toContain('FlatClaims Teacher');
+		});
+
+		it('accepts admin JWT claims under requestContext.http.authorizer', async () => {
+			const res = await wrapped.run({
+				requestContext: adminRCHttp,
+				path: '/api/teachers',
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					name: `HttpCtx Teacher ${uniqueSuffix}`,
+					position: 'Assoc. Prof.',
+					faculty: 'Math',
+					academicDegree: 'Ph.D.',
+				}),
+			});
+			expect(res.statusCode).toBe(200);
+			const body = jsonBody(res, expect) as { name: string };
+			expect(body.name).toContain('HttpCtx Teacher');
+		});
+
+		it('rejects anonymous create', async () => {
+			const res = await wrapped.run({
+				requestContext,
+				path: '/api/teachers',
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ name: 'X' }),
+			});
+			expect(res.statusCode).toBe(401);
+		});
+	});

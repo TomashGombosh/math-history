@@ -1,0 +1,120 @@
+name: Validate (Lint & Tests)
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - development
+      - main
+
+permissions:
+  contents: read
+  packages: read
+  id-token: write
+
+jobs:
+  server-validate:
+    name: Lint & Test (Server)
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Start test stack (headless)
+        run: docker compose -f docker-compose.test.yml up -d dynamodb minio
+
+      - name: Create DynamoDB table (migration)
+        run: docker compose -f docker-compose.test.yml run --rm dynamodb-migrate
+
+      - name: Create S3 bucket (MinIO init)
+        run: docker compose -f docker-compose.test.yml run --rm s3-init
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        working-directory: server_v2
+        run: npm ci
+
+      - name: Run lint
+        working-directory: server_v2
+        run: npm run lint
+
+      - name: Run tests
+        working-directory: server_v2
+        env:
+          AWS_REGION: eu-north-1
+          AWS_ACCESS_KEY_ID: local
+          AWS_SECRET_ACCESS_KEY: locallocal
+          NODE_ENV: test
+          DYNAMODB_TABLE_NAME: math-history-ddb-local
+          DYNAMODB_ENDPOINT: http://127.0.0.1:8000
+          S3_DATA_BUCKET: math-history-server-data-local
+          S3_ENDPOINT: http://127.0.0.1:9000
+          SECURITY_GROUP_ID: sg-xxxxxxxxxxxxxxxxx
+          SUBNET_ID: subnet-xxxxxxxxxxxxxxxxx
+          RATE_LIMIT: 100
+          BURST_LIMIT: 200
+        run: npm run test
+
+      - name: Stop test stack
+        if: always()
+        run: docker compose -f docker-compose.test.yml down -v
+
+  client-validate:
+    name: Lint & Test (Client)
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        working-directory: client
+        run: npm ci
+
+      - name: Run lint
+        working-directory: client
+        run: npm run lint
+
+      - name: Run unit tests
+        working-directory: client
+        run: npm run test
+
+      - name: Run build
+        working-directory: client
+        env:
+          VITE_API_URL: http://localhost:3000
+        run: npm run build
+
+  terraform-validate:
+    name: Lint (Terraform)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.13.2
+
+      - name: Terraform Format check
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+
+      - name: Run TFLint
+        run: |
+          tflint --init
+          tflint --recursive

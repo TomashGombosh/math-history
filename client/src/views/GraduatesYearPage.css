@@ -1,0 +1,193 @@
+.graduates-year-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 16px;
+  background: #fff;
+}
+
+.graduates-year-page h1 {
+  margin-bottom: 10px;
+}
+
+.page-intro {
+  margin-bottom: 16px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.graduates-year-empty,
+.graduates-year-error {
+  margin-top: 16px;
+}
+
+.graduates-students-load-more {
+  margin-top: 28px;
+  display: flex;
+  justify-content: center;
+}
+.graduates-students-load-more button {
+  padding: 10px 18px;
+  font-size: 15px;
+  cursor: pointer;
+  border-radius: 8px;
+  border: 1px solid #199090;
+  background: #fff;
+  color: #0d5555;
+}
+.graduates-students-load-more button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.years-table {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 8px 0 24px;
+}
+.year-cell {
+  padding: 4px 10px;
+  border: 1px solid #ccc;
+  font-size: 12px;
+  text-decoration: none;
+  color: #000;
+  background: #f9f9f9;
+}
+.year-cell:hover {
+  background: #e6f2f2;
+}
+.year-cell.active {
+  background: #19a0a0;
+  color: #fff;
+  font-weight: bold;
+}
+
+.year-title {
+  margin-bottom: 16px;
+}
+
+.students-group {
+  margin-top: 24px;
+}
+
+.group-title {
+  margin-bottom: 8px;
+  font-size: 1.1rem;
+}
+
+.students-list {
+  margin: 0 0 0 20px;
+  padding: 0;
+  column-count: 2;
+  column-gap: 40px;
+  display: inline-block;
+}
+
+.students-list li {
+  break-inside: avoid;
+  padding: 0 0 2px;
+  font-size: 14px;
+}
+
+.is-honors {
+  font-weight: bold;
+}
+
+.group-photos {
+  margin: 12px 0 4px 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.group-photo {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.group-photo img {
+  max-width: 320px;
+  max-height: 100px;
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.photo-caption {
+  font-size: 12px;
+  color: #555;
+  margin-top: 4px;
+}
+
+@media (max-width: 1024px) {
+  .graduates-year-page {
+    max-width: 100%;
+    padding: 20px 12px;
+  }
+
+  .years-table {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 768px) {
+  .graduates-year-page {
+    padding: 16px 10px;
+  }
+
+  .graduates-year-page h1 {
+    font-size: 22px;
+    text-align: center;
+  }
+
+  .page-intro {
+    font-size: 13px;
+    text-align: center;
+  }
+
+  .years-table {
+    gap: 3px;
+    margin-bottom: 16px;
+    justify-content: center;
+  }
+
+  .year-cell {
+    padding: 3px 8px;
+    font-size: 11px;
+  }
+
+  .students-list {
+    margin-left: 16px;
+    column-count: 1;
+    column-gap: 0;
+  }
+
+  .group-photos {
+    margin-left: 0;
+    justify-content: center;
+    flex-direction: column;
+  }
+
+  .group-photo img {
+    max-height: 100%;
+    max-width: 100%;
+    width: 100%;
+    max-width: 320px;
+  }
+}
+
+@media (max-width: 480px) {
+  .students-list {
+    margin-left: 12px;
+  }
+
+  .year-cell {
+    padding: 2px 6px;
+  }
+}

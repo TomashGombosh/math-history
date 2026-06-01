@@ -1,0 +1,83 @@
+name: Terraform apply (AWS OIDC + S3 backend)
+description: Assume role via OIDC, verify account, init remote state, apply.
+
+inputs:
+  working-directory:
+    description: Path to the Terraform root (stack).
+    required: true
+  aws-region:
+    description: AWS region for provider and backend.
+    required: true
+  role-to-assume:
+    description: IAM role ARN to assume (GitHub OIDC).
+    required: true
+  expected-aws-account-id:
+    description: Account ID that must match sts get-caller-identity.
+    required: true
+  state-bucket:
+    description: S3 bucket for Terraform state.
+    required: true
+  lock-table:
+    description: DynamoDB table for state locking.
+    required: true
+  state-key:
+    description: S3 object key for this stack state file.
+    required: true
+  tf-environment:
+    description: Value for TF_VAR_environment (stage or prod).
+    required: true
+  terraform-version:
+    description: Terraform CLI version.
+    required: false
+    default: "1.9.8"
+
+runs:
+  using: composite
+  steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v6
+      with:
+        role-to-assume: ${{ inputs.role-to-assume }}
+        aws-region: ${{ inputs.aws-region }}
+
+    - name: Verify AWS account
+      shell: bash
+      env:
+        EXPECTED: ${{ inputs.expected-aws-account-id }}
+      run: |
+        set -euo pipefail
+        ACTUAL=$(aws sts get-caller-identity --query Account --output text)
+        if [ "$ACTUAL" != "$EXPECTED" ]; then
+          echo "AWS account mismatch: expected ${EXPECTED}, got ${ACTUAL}"
+          exit 1
+        fi
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v4
+      with:
+        terraform_version: ${{ inputs.terraform-version }}
+        terraform_wrapper: false
+
+    - name: Terraform init
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        BUCKET: ${{ inputs.state-bucket }}
+        KEY: ${{ inputs.state-key }}
+        REGION: ${{ inputs.aws-region }}
+        LOCK_TABLE: ${{ inputs.lock-table }}
+      run: |
+        terraform init \
+          -backend-config="bucket=${BUCKET}" \
+          -backend-config="key=${KEY}" \
+          -backend-config="region=${REGION}" \
+          -backend-config="dynamodb_table=${LOCK_TABLE}" \
+          -backend-config="encrypt=true"
+
+    - name: Terraform apply
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        TF_VAR_aws_region: ${{ inputs.aws-region }}
+        TF_VAR_environment: ${{ inputs.tf-environment }}
+      run: terraform apply -auto-approve

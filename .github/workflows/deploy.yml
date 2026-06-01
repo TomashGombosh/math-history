@@ -1,0 +1,418 @@
+# Deploys infra stacks after merge. Branch → GitHub Environment:
+#   development → environment "stage" (stage AWS)
+#   main        → environment "production" (prod AWS)
+#
+# Per-environment secrets (stage / production):
+#   AWS_ROLE_TO_ASSUME     — IAM role ARN for GitHub OIDC
+#   AWS_ACCOUNT_ID         — expected account (validated before apply)
+#   TF_STATE_BUCKET        — S3 bucket for Terraform state
+#   TF_LOCK_TABLE          — DynamoDB table name for state locking
+#
+# Repository variable (optional): AWS_REGION (default eu-north-1 in jobs below).
+#
+# Bootstrap once per account: create the state bucket and lock table, and IAM roles
+# trusted by GitHub OIDC (DynamoDB, Cognito, S3 data bucket, Serverless deploy, etc.).
+#
+# Per-environment secret for S3 uploads bucket stack: AWS_S3_DATA_ROLE_TO_ASSUME
+#
+# Serverless deploy job (same branch → environment as Terraform):
+#   Per-environment secrets: AWS_SERVERLESS_ROLE_TO_ASSUME, AWS_ACCOUNT_ID
+#   Optional secret: SERVERLESS_ACCESS_KEY — if Serverless Framework org/dashboard requires it for deploy
+#   Per-environment variables (recommended):
+#     COGNITO_JWT_ISSUER, COGNITO_JWT_AUDIENCE — HTTP API JWT authorizer (per-environment secrets; match Terraform Cognito outputs)
+#     SECURITY_GROUP_ID, SUBNET_ID — Lambda VPC (required by server_v2/serverless.yml)
+#     CORS_ORIGIN — optional browser origin for API CORS
+#     SITE_URL — same canonical public origin as VITE_SITE_URL (https://CLOUDFRONT_ALIAS, no trailing slash).
+#       Required for correct sitemap <loc> when CloudFront uses AllViewerExceptHostHeader (Host at Lambda is execute-api).
+#     TEACHER_IMAGE_CDN_BASE — public origin for teacher photos (assets CloudFront / `teachers/*` keys); no trailing slash.
+#       Match ASSETS_CLOUDFRONT_ALIAS (e.g. https://assets-math-stage.afj-solution.com).
+#   Naming: Serverless --stage is stage (development branch) or prod (main), matching TF_VAR_environment.
+#
+# Client static site (same branch → environment as Serverless API):
+#   Creates private S3 bucket via client/serverless.yml (no website hosting; CloudFront in Terraform).
+#   After deploy, syncs client/dist to the bucket. IAM for the deploy role must allow s3:PutObject,
+#   s3:DeleteObject, s3:ListBucket on arn:aws:s3:::math-history-client-static-* (and objects).
+#   Per-environment secrets: AWS_SERVERLESS_ROLE_TO_ASSUME, AWS_ACCOUNT_ID, SERVERLESS_ACCESS_KEY (optional)
+#   Per-environment variables (recommended): VITE_API_URL, VITE_SITE_URL — baked into the Vite build
+#     VITE_COGNITO_USER_POOL_ID, VITE_COGNITO_USER_POOL_CLIENT_ID — baked into Vite build (per-environment secrets; same pool / app client as issuer / audience above)
+#   After build, CI runs scripts/write-robots.sh: stage = overwrite dist/robots.txt with
+#     Disallow: /; prod = ship client/public/robots.txt verbatim (source of truth — AI
+#     crawler allow-list, share-preview crawlers, host, sitemap) and verify the Sitemap
+#     line matches VITE_SITE_URL.
+#
+# CloudFront (Terraform, after Serverless API + client bucket/sync):
+#   Per-environment secret: AWS_CLOUDFRONT_ROLE_TO_ASSUME — OIDC role with CloudFront + S3 bucket policy
+#     (must allow cloudfront:CreateInvalidation and cloudfront:ListDistributions for post-apply cache purge)
+#   Per-environment variables (required):
+#     ACM_CERTIFICATE_ARN — ACM cert in us-east-1 covering CLOUDFRONT_ALIAS (SNI for CloudFront)
+#     HTTP_API_EXECUTE_API_DOMAIN — HTTP API hostname only, e.g. abc.execute-api.eu-north-1.amazonaws.com
+#     CLOUDFRONT_ALIAS — alternate domain (production: math-history.afj-solution.com; stage: math-history-stage.afj-solution.com)
+#   Optional variable: CLOUDFRONT_S3_BUCKET (static site)
+#   Behaviors: /api/* and /sitemap.xml → API; default → SPA
+#
+# CloudFront assets (Terraform, separate distribution + hostname for S3 data bucket objects):
+#   Same secret AWS_CLOUDFRONT_ROLE_TO_ASSUME (needs CloudFront + S3 PutBucketPolicy on data bucket)
+#   Per-environment variables (required):
+#     ASSETS_ACM_CERTIFICATE_ARN — ACM in us-east-1 covering ASSETS_CLOUDFRONT_ALIAS (can match site cert if SANs include assets hosts)
+#     ASSETS_CLOUDFRONT_ALIAS — stage: assets-math-stage.afj-solution.com; prod: assets-math.afj-solution.com
+#   Optional: CLOUDFRONT_S3_DATA_BUCKET — overrides math-history-server-data-<stage|prod>
+
+name: Deploy application
+
+on:
+  push:
+    branches:
+      - development
+      - main
+
+concurrency:
+  group: deploy-infra-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy-dynamodb:
+    name: Terraform apply (DynamoDB)
+    runs-on: ubuntu-24.04
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'stage' }}
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Resolve target environment
+        id: target
+        run: |
+          if [ "${GITHUB_REF}" = "refs/heads/main" ]; then
+            echo "tf_env=prod" >> "$GITHUB_OUTPUT"
+          else
+            echo "tf_env=stage" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Apply DynamoDB stack
+        uses: ./.github/actions/terraform-aws-apply
+        with:
+          working-directory: infra/dynamodb
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_DYNAMODB_ROLE_TO_ASSUME }}
+          expected-aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
+          state-bucket: ${{ vars.TF_STATE_BUCKET }}
+          lock-table: ${{ vars.TF_LOCK_TABLE }}
+          state-key: dynamodb/${{ steps.target.outputs.tf_env }}.tfstate
+          tf-environment: ${{ steps.target.outputs.tf_env }}
+
+  deploy-cognito:
+    name: Terraform apply (Cognito)
+    runs-on: ubuntu-24.04
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'stage' }}
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Resolve target environment
+        id: target
+        run: |
+          if [ "${GITHUB_REF}" = "refs/heads/main" ]; then
+            echo "tf_env=prod" >> "$GITHUB_OUTPUT"
+          else
+            echo "tf_env=stage" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Apply Cognito stack
+        uses: ./.github/actions/terraform-aws-apply
+        with:
+          working-directory: infra/cognito
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_COGNITO_ROLE_TO_ASSUME }}
+          expected-aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
+          state-bucket: ${{ vars.TF_STATE_BUCKET }}
+          lock-table: ${{ vars.TF_LOCK_TABLE }}
+          state-key: cognito/${{ steps.target.outputs.tf_env }}.tfstate
+          tf-environment: ${{ steps.target.outputs.tf_env }}
+
+  deploy-s3-image-bucket:
+    name: Terraform apply (S3 uploads)
+    runs-on: ubuntu-24.04
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'stage' }}
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Resolve target environment
+        id: target
+        run: |
+          if [ "${GITHUB_REF}" = "refs/heads/main" ]; then
+            echo "tf_env=prod" >> "$GITHUB_OUTPUT"
+          else
+            echo "tf_env=stage" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Apply S3 data bucket stack
+        uses: ./.github/actions/terraform-aws-apply
+        with:
+          working-directory: infra/s3-data
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_S3_DATA_ROLE_TO_ASSUME }}
+          expected-aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
+          state-bucket: ${{ vars.TF_STATE_BUCKET }}
+          lock-table: ${{ vars.TF_LOCK_TABLE }}
+          state-key: s3-data/${{ steps.target.outputs.tf_env }}.tfstate
+          tf-environment: ${{ steps.target.outputs.tf_env }}
+
+  deploy-server:
+    name: Deploy server (Serverless)
+    runs-on: ubuntu-24.04
+    needs: [deploy-dynamodb, deploy-cognito, deploy-s3-image-bucket]
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'stage' }}
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+    defaults:
+      run:
+        working-directory: server_v2
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Resolve target environment
+        id: target
+        run: |
+          if [ "${GITHUB_REF}" = "refs/heads/main" ]; then
+            echo "tf_env=prod" >> "$GITHUB_OUTPUT"
+            echo "node_env=production" >> "$GITHUB_OUTPUT"
+          else
+            echo "tf_env=stage" >> "$GITHUB_OUTPUT"
+            echo "node_env=stage" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_SERVERLESS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS account
+        env:
+          EXPECTED: ${{ secrets.AWS_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          ACTUAL=$(aws sts get-caller-identity --query Account --output text)
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "AWS account mismatch: expected ${EXPECTED}, got ${ACTUAL}"
+            exit 1
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: server_v2/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Serverless deploy
+        env:
+          DYNAMODB_TABLE_NAME: math-history-server-ddb-${{ steps.target.outputs.tf_env }}
+          S3_DATA_BUCKET: math-history-server-data-${{ steps.target.outputs.tf_env }}
+          COGNITO_JWT_ISSUER: ${{ secrets.COGNITO_JWT_ISSUER }}
+          COGNITO_JWT_AUDIENCE: ${{ secrets.COGNITO_JWT_AUDIENCE }}
+          NODE_ENV: ${{ steps.target.outputs.node_env }}
+          SECURITY_GROUP_ID: ${{ vars.SECURITY_GROUP_ID }}
+          SUBNET_ID: ${{ vars.SUBNET_ID }}
+          CORS_ORIGIN: ${{ vars.CORS_ORIGIN }}
+          SITE_URL: ${{ vars.VITE_SITE_URL }}
+          TEACHER_IMAGE_CDN_BASE: ${{ vars.TEACHER_IMAGE_CDN_BASE }}
+          SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
+        run: npx serverless deploy --stage ${{ steps.target.outputs.tf_env }} --region ${{ env.AWS_REGION }}
+
+  deploy-client-static:
+    name: Deploy client (static site)
+    runs-on: ubuntu-24.04
+    needs: [deploy-dynamodb, deploy-cognito, deploy-s3-image-bucket]
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'stage' }}
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Resolve target environment
+        id: target
+        run: |
+          if [ "${GITHUB_REF}" = "refs/heads/main" ]; then
+            echo "tf_env=prod" >> "$GITHUB_OUTPUT"
+          else
+            echo "tf_env=stage" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_SERVERLESS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS account
+        env:
+          EXPECTED: ${{ secrets.AWS_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          ACTUAL=$(aws sts get-caller-identity --query Account --output text)
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "AWS account mismatch: expected ${EXPECTED}, got ${ACTUAL}"
+            exit 1
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build client
+        env:
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+          VITE_SITE_URL: ${{ vars.VITE_SITE_URL }}
+          VITE_COGNITO_USER_POOL_ID: ${{ secrets.VITE_COGNITO_USER_POOL_ID }}
+          VITE_COGNITO_USER_POOL_CLIENT_ID: ${{ secrets.VITE_COGNITO_USER_POOL_CLIENT_ID }}
+        run: npm run build
+
+      - name: Write robots.txt for environment
+        env:
+          VITE_SITE_URL: ${{ vars.VITE_SITE_URL }}
+        run: bash scripts/write-robots.sh "${{ steps.target.outputs.tf_env }}"
+
+      - name: Serverless deploy (S3 bucket stack)
+        env:
+          SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
+          STATIC_SITE_DOMAIN: ${{ vars.STATIC_SITE_DOMAIN }}
+        run: npx serverless deploy --stage ${{ steps.target.outputs.tf_env }} --region ${{ env.AWS_REGION }}
+
+      - name: Sync build to S3
+        env:
+          BUCKET: math-history-client-static-${{ steps.target.outputs.tf_env }}
+        run: |
+          set -euo pipefail
+          aws s3 sync dist/ "s3://${BUCKET}/" --delete --only-show-errors
+
+  deploy-cloudfront:
+    name: Terraform apply (CloudFront)
+    runs-on: ubuntu-24.04
+    needs: [deploy-server, deploy-client-static]
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'stage' }}
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      TF_VAR_acm_certificate_arn: ${{ vars.ACM_CERTIFICATE_ARN }}
+      TF_VAR_api_gateway_domain_name: ${{ vars.HTTP_API_EXECUTE_API_DOMAIN }}
+      TF_VAR_cloudfront_alias: ${{ vars.CLOUDFRONT_ALIAS }}
+      TF_VAR_s3_bucket_name: ${{ vars.CLOUDFRONT_S3_BUCKET }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Resolve target environment
+        id: target
+        run: |
+          if [ "${GITHUB_REF}" = "refs/heads/main" ]; then
+            echo "tf_env=prod" >> "$GITHUB_OUTPUT"
+          else
+            echo "tf_env=stage" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Apply CloudFront stack
+        uses: ./.github/actions/terraform-aws-apply
+        with:
+          working-directory: infra/cloudfront
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_CLOUDFRONT_ROLE_TO_ASSUME }}
+          expected-aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
+          state-bucket: ${{ vars.TF_STATE_BUCKET }}
+          lock-table: ${{ vars.TF_LOCK_TABLE }}
+          state-key: cloudfront/${{ steps.target.outputs.tf_env }}.tfstate
+          tf-environment: ${{ steps.target.outputs.tf_env }}
+
+      - name: Configure AWS credentials (invalidate site cache)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_CLOUDFRONT_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS account (invalidation)
+        env:
+          EXPECTED: ${{ secrets.AWS_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          ACTUAL=$(aws sts get-caller-identity --query Account --output text)
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "AWS account mismatch: expected ${EXPECTED}, got ${ACTUAL}"
+            exit 1
+          fi
+
+      - name: Invalidate CloudFront cache (static site)
+        env:
+          CLOUDFRONT_ALIAS: ${{ vars.CLOUDFRONT_ALIAS }}
+        run: |
+          set -euo pipefail
+          DIST_ID=$(aws cloudfront list-distributions \
+            --query "DistributionList.Items[?Aliases.Items && contains(Aliases.Items, '${CLOUDFRONT_ALIAS}')].Id | [0]" \
+            --output text)
+          if [ -z "$DIST_ID" ] || [ "$DIST_ID" = "None" ]; then
+            echo "No CloudFront distribution found for alias ${CLOUDFRONT_ALIAS}"
+            exit 1
+          fi
+          aws cloudfront create-invalidation \
+            --distribution-id "$DIST_ID" \
+            --paths "/*"
+
+  deploy-cloudfront-assets:
+    name: Terraform apply (CloudFront assets)
+    runs-on: ubuntu-24.04
+    needs: [deploy-cloudfront]
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'stage' }}
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      TF_VAR_acm_certificate_arn: ${{ vars.ASSETS_ACM_CERTIFICATE_ARN }}
+      TF_VAR_assets_cloudfront_alias: ${{ vars.ASSETS_CLOUDFRONT_ALIAS }}
+      TF_VAR_s3_data_bucket_name: ${{ vars.CLOUDFRONT_S3_DATA_BUCKET }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Resolve target environment
+        id: target
+        run: |
+          if [ "${GITHUB_REF}" = "refs/heads/main" ]; then
+            echo "tf_env=prod" >> "$GITHUB_OUTPUT"
+          else
+            echo "tf_env=stage" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Apply CloudFront assets stack
+        uses: ./.github/actions/terraform-aws-apply
+        with:
+          working-directory: infra/cloudfront-assets
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_CLOUDFRONT_ROLE_TO_ASSUME }}
+          expected-aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
+          state-bucket: ${{ vars.TF_STATE_BUCKET }}
+          lock-table: ${{ vars.TF_LOCK_TABLE }}
+          state-key: cloudfront-assets/${{ steps.target.outputs.tf_env }}.tfstate
+          tf-environment: ${{ steps.target.outputs.tf_env }}
