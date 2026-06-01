@@ -1,4 +1,4 @@
-/** Merge multiple graduate cohort rows for one year (server_v2 returns one item per cohort). */
+/** Merge multiple graduate cohort rows for one year (server returns one item per cohort). */
 export type GraduateCohortRow = {
   id: number;
   year: number;

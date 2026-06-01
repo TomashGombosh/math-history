@@ -105,7 +105,7 @@ Implementation lives next to `organizationJsonLd` in `client/src/lib/seoHelpers.
 
 ## 7) Sitemap parity
 
-The dynamic sitemap is owned by **`server_v2/src/modules/sitemap.xml/get/index.ts`** + **`server_v2/src/services/sitemap-service.ts`**. It pulls teacher slugs (`listTeacherSlugsForSitemap`) and graduate years (`listGraduateYearsForSitemap`) from DynamoDB and serves `/sitemap.xml` via Lambda + CloudFront, cached for 3600s. CloudFront must route `/sitemap.xml` to this Lambda.
+The dynamic sitemap is owned by **`server/src/modules/sitemap.xml/get/index.ts`** + **`server/src/services/sitemap-service.ts`**. It pulls teacher slugs (`listTeacherSlugsForSitemap`) and graduate years (`listGraduateYearsForSitemap`) from DynamoDB and serves `/sitemap.xml` via Lambda + CloudFront, cached for 3600s. CloudFront must route `/sitemap.xml` to this Lambda.
 
 When you add a new public route or a new entity type:
 
@@ -132,5 +132,5 @@ When a change touches AI-discovery surface, verify:
 - [ ] `client/public/llms.txt` reflects the current public route set.
 - [ ] Affected page emits a `@graph`-linked JSON-LD with stable `@id` and `inLanguage: "uk"`.
 - [ ] `client/index.html` static shell still matches `SEO_SITE_NAME` and current canonical defaults.
-- [ ] `server_v2/src/services/sitemap-service.ts#buildSitemapXml` covers any new public route (sitemap is Lambda-owned, not static).
+- [ ] `server/src/services/sitemap-service.ts#buildSitemapXml` covers any new public route (sitemap is Lambda-owned, not static).
 - [ ] No PII or admin-only content leaks into structured data.

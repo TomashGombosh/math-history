@@ -1,6 +1,6 @@
 ---
 name: dynamodb-best-practices
-description: DynamoDB modeling and JS/TS implementation rules. Use when writing or modifying DynamoDB code in `server_v2/` or `infra/dynamodb/` — repositories, key schemas, GSIs, Get/Query/Put/Update/Delete, pagination, conditional writes, idempotency, runtime validation. Replaces relational/Sequelize patterns from the legacy `server/`.
+description: DynamoDB modeling and JS/TS implementation rules. Use when writing or modifying DynamoDB code in `server/` or `infra/dynamodb/` — repositories, key schemas, GSIs, Get/Query/Put/Update/Delete, pagination, conditional writes, idempotency, runtime validation. Replaces relational/Sequelize patterns from the legacy `server/`.
 ---
 
 # DynamoDB + JavaScript/TypeScript best practices

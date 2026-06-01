@@ -20,7 +20,7 @@
 #   Optional secret: SERVERLESS_ACCESS_KEY — if Serverless Framework org/dashboard requires it for deploy
 #   Per-environment variables (recommended):
 #     COGNITO_JWT_ISSUER, COGNITO_JWT_AUDIENCE — HTTP API JWT authorizer (per-environment secrets; match Terraform Cognito outputs)
-#     SECURITY_GROUP_ID, SUBNET_ID — Lambda VPC (required by server_v2/serverless.yml)
+#     SECURITY_GROUP_ID, SUBNET_ID — Lambda VPC (required by server/serverless.yml)
 #     CORS_ORIGIN — optional browser origin for API CORS
 #     SITE_URL — same canonical public origin as VITE_SITE_URL (https://CLOUDFRONT_ALIAS, no trailing slash).
 #       Required for correct sitemap <loc> when CloudFront uses AllViewerExceptHostHeader (Host at Lambda is execute-api).
@@ -176,7 +176,7 @@ jobs:
       AWS_REGION: ${{ vars.AWS_REGION }}
     defaults:
       run:
-        working-directory: server_v2
+        working-directory: server
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -214,7 +214,7 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: server_v2/package-lock.json
+          cache-dependency-path: server/package-lock.json
 
       - name: Install dependencies
         run: npm ci

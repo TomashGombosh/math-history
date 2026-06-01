@@ -1,11 +1,11 @@
-# Stack for server_v2 integration tests and CI (DynamoDB Local + MinIO).
+# Stack for server integration tests and CI (DynamoDB Local + MinIO).
 # DynamoDB Local uses -inMemory (no disk SQLite) so bind/named volumes do not hit permission errors.
 #
 # Usage (repo root):
 #   docker compose -f docker-compose.test.yml up -d dynamodb minio
 #   docker compose -f docker-compose.test.yml run --rm dynamodb-migrate
 #   docker compose -f docker-compose.test.yml run --rm s3-init
-#   cd server_v2 && npm test
+#   cd server && npm test
 #   docker compose -f docker-compose.test.yml down -v
 #
 # Env for tests (host): DYNAMODB_ENDPOINT=http://127.0.0.1:8000 S3_ENDPOINT=http://127.0.0.1:9000
@@ -31,7 +31,7 @@ services:
       AWS_DEFAULT_REGION: eu-north-1
       AWS_EC2_METADATA_DISABLED: "true"
     volumes:
-      - ./server_v2/migration/table.json:/migration/table.json:ro
+      - ./server/migration/table.json:/migration/table.json:ro
     restart: "no"
     entrypoint: ["/bin/sh", "-ec"]
     command:

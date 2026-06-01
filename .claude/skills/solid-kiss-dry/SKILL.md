@@ -1,6 +1,6 @@
 ---
 name: solid-kiss-dry
-description: Baseline design principles for any code change in this repo. Use whenever writing or refactoring code in `app/`, `server/`, `client/`, `server_v2/`, or `infra/`. Reinforces SOLID / KISS / DRY without permitting speculative abstraction.
+description: Baseline design principles for any code change in this repo. Use whenever writing or refactoring code in `app/`, `server/`, `client/`, `server/`, or `infra/`. Reinforces SOLID / KISS / DRY without permitting speculative abstraction.
 ---
 
 # SOLID / KISS / DRY rules

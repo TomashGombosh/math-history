@@ -1,6 +1,6 @@
 ---
 name: aws-low-cost
-description: Free-tier-first AWS architecture rules for this project. Use when designing or modifying Lambda, S3, CloudFront, DynamoDB, or any IAM/cost-impacting infra (`infra/`, `server_v2/serverless.*`, CloudFront behaviors, bundle size, IAM policies, budget alarms). Reinforces "lowest safe cost first; tune from real metrics."
+description: Free-tier-first AWS architecture rules for this project. Use when designing or modifying Lambda, S3, CloudFront, DynamoDB, or any IAM/cost-impacting infra (`infra/`, `server/serverless.*`, CloudFront behaviors, bundle size, IAM policies, budget alarms). Reinforces "lowest safe cost first; tune from real metrics."
 ---
 
 # Free-tier / low-cost AWS rules

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Walks `src/modules`, compares each folder to `test.ts` files and the default `TESTS` list in `src/tests/app.ts`,
- * writes `test/test-tree.yml`. Run from repo root: `node server_v2/scripts/generate-test-tree.cjs` or `cd server_v2 && node scripts/generate-test-tree.cjs`.
+ * writes `test/test-tree.yml`. Run from repo root: `node server/scripts/generate-test-tree.cjs` or `cd server && node scripts/generate-test-tree.cjs`.
  */
 const fs = require('fs');
 const path = require('path');

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Loads layout config (legacy layoutConfig.json shape) into DynamoDB as CONFIG / LAYOUT.
- * Matches server_v2/src/services/layout-service.ts item shape.
+ * Matches server/src/services/layout-service.ts item shape.
  *
  * Usage: node load-layout-dynamodb.mjs <layout-seed.json> <tableName> [endpointUrl?]
  */

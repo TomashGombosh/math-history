@@ -1,12 +1,12 @@
 # Local stack (full project). For a slimmer test-only stack (CI / npm test), see docker-compose.test.yml.
-# Local stack for server_v2 integration tests (DynamoDB + MinIO):
+# Local stack for server integration tests (DynamoDB + MinIO):
 #   docker compose up -d dynamodb dynamodb-migrate minio s3-init
-#   server_v2/.env: DYNAMODB_ENDPOINT=http://127.0.0.1:8000 S3_ENDPOINT=http://127.0.0.1:9000
+#   server/.env: DYNAMODB_ENDPOINT=http://127.0.0.1:8000 S3_ENDPOINT=http://127.0.0.1:9000
 #   AWS_ACCESS_KEY_ID=local AWS_SECRET_ACCESS_KEY=local (or MinIO roots: local / locallocal)
-#   then: cd server_v2 && npm test
+#   then: cd server && npm test
 services:
   # DynamoDB Local (port 8000). Table math-history-ddb-local is created by dynamodb-migrate.
-  # serverless-offline on the host: server_v2/.env → DYNAMODB_ENDPOINT=http://127.0.0.1:8000
+  # serverless-offline on the host: server/.env → DYNAMODB_ENDPOINT=http://127.0.0.1:8000
   # A process in this compose network: DYNAMODB_ENDPOINT=http://dynamodb:8000
   dynamodb:
     image: amazon/dynamodb-local:latest
@@ -28,7 +28,7 @@ services:
       AWS_SECRET_ACCESS_KEY: local
       AWS_DEFAULT_REGION: eu-north-1
     volumes:
-      - ./server_v2/migration/table.json:/migration/table.json:ro
+      - ./server/migration/table.json:/migration/table.json:ro
     restart: "no"
     entrypoint: ["/bin/sh", "-ec"]
     command:
@@ -48,7 +48,7 @@ services:
         aws dynamodb create-table --cli-input-json file:///migration/table.json --endpoint-url "$$ENDPOINT"
         echo "DynamoDB table math-history-ddb-local created."
 
-  # MinIO (S3-compatible). Host: S3_ENDPOINT=http://127.0.0.1:9000, bucket in server_v2/.env S3_DATA_BUCKET
+  # MinIO (S3-compatible). Host: S3_ENDPOINT=http://127.0.0.1:9000, bucket in server/.env S3_DATA_BUCKET
   minio:
     image: minio/minio:latest
     container_name: math-history-minio-local

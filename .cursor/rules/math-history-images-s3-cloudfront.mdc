@@ -20,8 +20,8 @@ alwaysApply: true
 
 ## Presigned uploads (API)
 
-- `server_v2/src/services/upload-service.ts` writes keys such as `teachers_img/images/<file>` or `graduates_img/images/<file>`; stored **`imageUrl`** is often path-style (`/teachers_img/images/…`). Seeds may use full **`https://<alias>/images/teachers/…`** or **`…/images/graduates/…`** for CDN-facing URLs aligned with the strip function.
-- **`deleteImageFiles`** (`server_v2/src/lib/image-s3.ts`) tries multiple key shapes: top-level `images/`, `images-webp/`, `images-thumbs-webp/`, and `teachers_img/…` / `graduates_img/…` variants — cleanup expects uploads and derivatives to follow that layout **in the bucket the API uses** (same data bucket as configured for Lambda/S3).
+- `server/src/services/upload-service.ts` writes keys such as `teachers_img/images/<file>` or `graduates_img/images/<file>`; stored **`imageUrl`** is often path-style (`/teachers_img/images/…`). Seeds may use full **`https://<alias>/images/teachers/…`** or **`…/images/graduates/…`** for CDN-facing URLs aligned with the strip function.
+- **`deleteImageFiles`** (`server/src/lib/image-s3.ts`) tries multiple key shapes: top-level `images/`, `images-webp/`, `images-thumbs-webp/`, and `teachers_img/…` / `graduates_img/…` variants — cleanup expects uploads and derivatives to follow that layout **in the bucket the API uses** (same data bucket as configured for Lambda/S3).
 
 ## Local / Vite
 

@@ -1,6 +1,6 @@
 # AGENTS.md — guidance for coding agents
 
-This repository is a **Math History** site: a **Nuxt/Vue** app at the repo root, a **React Router (Vite)** migration client in `client/`, a **Serverless Framework** API in `server_v2/`, and **Terraform** under `infra/`. Postgres and local orchestration use **Docker Compose**.
+This repository is a **Math History** site: a **Nuxt/Vue** app at the repo root, a **React Router (Vite)** migration client in `client/`, a **Serverless Framework** API in `server/`, and **Terraform** under `infra/`. Postgres and local orchestration use **Docker Compose**.
 
 ## Repository layout
 
@@ -8,7 +8,7 @@ This repository is a **Math History** site: a **Nuxt/Vue** app at the repo root,
 |------|------|--------|
 | Legacy Nuxt app | Root (`app/`, `nuxt.config.ts`, etc.) | Vue/Nuxt 4, Sequelize + Postgres |
 | Migration client | `client/` | React 19, React Router 7, Vite; proxies `/api/*` to Nuxt in Docker |
-| Serverless API | `server_v2/` | TypeScript Lambdas, DynamoDB, S3, Zod; image derivatives: `server_v2/docs/IMAGE_UPLOAD_DERIVATIVES.md` |
+| Serverless API | `server/` | TypeScript Lambdas, DynamoDB, S3, Zod; image derivatives: `server/docs/IMAGE_UPLOAD_DERIVATIVES.md` |
 | Infrastructure | `infra/` | Terraform modules (CloudFront, Cognito, S3, etc.) |
 | DB migrations | `migrations/` | SQL migrations |
 
@@ -16,12 +16,12 @@ This repository is a **Math History** site: a **Nuxt/Vue** app at the repo root,
 
 - **Full stack (recommended):** from repo root, `docker compose up --build` — Nuxt at `http://localhost:3000`, React at `http://localhost:5173`, Postgres at `localhost:5432`.
 - **React client only:** `cd client && npm install && npm run dev` (expects API on configured proxy target).
-- **Serverless API locally:** `cd server_v2 && npm install && npm run dev` (uses `sls offline`; see `server_v2` scripts and env).
+- **Serverless API locally:** `cd server && npm install && npm run dev` (uses `sls offline`; see `server` scripts and env).
 
 ## Tests and quality
 
 - **Client:** `cd client && npm run test:run` (Vitest); `npm run lint` for ESLint.
-- **API:** `cd server_v2 && npm test` (Jest); `npm run lint` for ESLint.
+- **API:** `cd server && npm test` (Jest); `npm run lint` for ESLint.
 
 Run the relevant commands after changes that affect those packages.
 
