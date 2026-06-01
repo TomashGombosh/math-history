@@ -293,7 +293,15 @@ jobs:
           VITE_SITE_URL: ${{ vars.VITE_SITE_URL }}
           VITE_COGNITO_USER_POOL_ID: ${{ secrets.VITE_COGNITO_USER_POOL_ID }}
           VITE_COGNITO_USER_POOL_CLIENT_ID: ${{ secrets.VITE_COGNITO_USER_POOL_CLIENT_ID }}
-        run: npm run build
+        run: |
+          set -euo pipefail
+          echo "Building client..."
+          echo "VITE_API_URL: ${{ vars.VITE_API_URL }}"
+          echo "VITE_SITE_URL: ${{ vars.VITE_SITE_URL }}"
+          echo "VITE_COGNITO_USER_POOL_ID: ${{ secrets.VITE_COGNITO_USER_POOL_ID }}"
+          echo "VITE_COGNITO_USER_POOL_CLIENT_ID: ${{ secrets.VITE_COGNITO_USER_POOL_CLIENT_ID }}"
+          npm run build
+          echo "Client built successfully"
 
       - name: Write robots.txt for environment
         env:
