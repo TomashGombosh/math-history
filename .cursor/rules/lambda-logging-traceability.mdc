@@ -1,6 +1,6 @@
 ---
 description: Logging, traceability, and visibility for AWS Lambda and Serverless Framework
-globs: "**/{server,server_v2}/**/*.{ts,js}"
+globs: "**/{server,server}/**/*.{ts,js}"
 alwaysApply: false
 ---
 

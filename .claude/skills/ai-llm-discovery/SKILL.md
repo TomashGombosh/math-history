@@ -19,8 +19,8 @@ Optimize for **AI discovery, citation, and answerability**, not training-corpus 
 | `client/index.html` | client | Static shell with non-JS-dependent meta + JSON-LD baseline |
 | `client/src/lib/seo.tsx` | client | Runtime `<Seo>` component (react-helmet-async) |
 | `client/src/lib/seoHelpers.ts` | client | JSON-LD builders, site URL, descriptions |
-| `server_v2/src/modules/sitemap.xml/get/index.ts` | server_v2 | Lambda handler serving `/sitemap.xml` |
-| `server_v2/src/services/sitemap-service.ts` | server_v2 | Builds the XML from `listTeacherSlugsForSitemap` + `listGraduateYearsForSitemap` |
+| `server/src/modules/sitemap.xml/get/index.ts` | server | Lambda handler serving `/sitemap.xml` |
+| `server/src/services/sitemap-service.ts` | server | Builds the XML from `listTeacherSlugsForSitemap` + `listGraduateYearsForSitemap` |
 
 ## 1) Crawler stance (`robots.txt`)
 
@@ -251,10 +251,10 @@ These are crawler-readable hints that improve LLM extraction quality:
 
 ## 7) Sitemap parity
 
-The dynamic sitemap is **already implemented in `server_v2`**:
+The dynamic sitemap is **already implemented in `server`**:
 
-- Handler: `server_v2/src/modules/sitemap.xml/get/index.ts` (`publicResource = true`, edge-cached for 3600s).
-- Builder: `server_v2/src/services/sitemap-service.ts#buildSitemapXml`.
+- Handler: `server/src/modules/sitemap.xml/get/index.ts` (`publicResource = true`, edge-cached for 3600s).
+- Builder: `server/src/services/sitemap-service.ts#buildSitemapXml`.
 - Data sources: `listTeacherSlugsForSitemap()` (teacher service) and `listGraduateYearsForSitemap()` (graduate service) — both DynamoDB-backed.
 - Origin resolution: `resolvePublicSiteBase()` reads `SITE_URL` env, then `X-Public-Site-Base` CloudFront origin custom header, then `X-Forwarded-Host`/`Host`.
 
@@ -289,6 +289,6 @@ When a change touches AI-discovery surface, verify:
 - `client/public/llms.txt` reflects the current public route set.
 - The affected page emits a single `@graph`-linked JSON-LD with stable `@id` IRIs and `inLanguage: "uk"` on every node.
 - `client/index.html` static shell defaults still match `SEO_SITE_NAME` and `getSiteUrl()`.
-- `server_v2/src/services/sitemap-service.ts#buildSitemapXml` includes any new public route (sitemap is Lambda-owned).
+- `server/src/services/sitemap-service.ts#buildSitemapXml` includes any new public route (sitemap is Lambda-owned).
 - No PII or admin-only content leaks into structured data or `llms*.txt`.
 - `cd client && npm run lint && npm run test:run` passes.

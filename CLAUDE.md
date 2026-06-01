@@ -9,7 +9,7 @@ Two parallel codebases coexist; most new work happens on the **target stack**.
 | | Legacy (frozen, parity-only) | Target (active) |
 |---|---|---|
 | Frontend | Nuxt 4 + Vue 3 in `app/`, Nitro server views | **React 19** + React Router 7 + Vite + MUI v7 in `client/` |
-| Backend | Nitro + Sequelize/Postgres in `server/` | **Serverless Framework** (TypeScript Lambdas) in `server_v2/` |
+| Backend | Nitro + Sequelize/Postgres in `server/` | **Serverless Framework** (TypeScript Lambdas) in `server/` |
 | Storage | Postgres (`docker-compose.yml`, `migrations/teachers_db_dump.sql`) + local `public/` files | **DynamoDB** + **S3** (with CloudFront) |
 | Auth | JWT in `server/utils/auth.js` | **AWS Cognito** (Amplify SRP on the client; `cognito:groups` claim on the API) |
 | Delivery | Nitro server, local Postgres | S3 (SPA) + CloudFront, Lambda for API/sitemap |
@@ -26,7 +26,7 @@ The migration plan is `MIGRATION_DAY_BY_DAY_PLAN.md`; **current status & remaini
 | `app/` | legacy | Nuxt 4 + Vue 3 pages, components, composables |
 | `server/` | legacy | Nitro + Sequelize REST API; image upload writes to local `public/` |
 | `client/` | target | React 19 SPA (Vite, React Router 7, MUI, Amplify, Vitest) |
-| `server_v2/` | target | TypeScript Lambdas (Serverless Framework, DynamoDB, S3, Zod, Jest) |
+| `server/` | target | TypeScript Lambdas (Serverless Framework, DynamoDB, S3, Zod, Jest) |
 | `infra/` | target | Terraform: `cloudfront/`, `cloudfront-assets/`, `cognito/`, `dynamodb/`, `s3-data/`, `modules/` |
 | `migrations/` | data | SQL dump for legacy Postgres (`teachers_db_dump.sql`) |
 | `scripts/` | data | `generate-thumbs.mjs` (legacy webp thumbnails) |
@@ -55,8 +55,8 @@ The migration plan is `MIGRATION_DAY_BY_DAY_PLAN.md`; **current status & remaini
 - `npm run preview` — preview built artifacts
 - `npm run deploy` — `build` then `serverless deploy` (uploads `dist/` to S3 + invalidates CloudFront)
 
-### Serverless API — `server_v2/`
-- `cd server_v2 && npm install`
+### Serverless API — `server/`
+- `cd server && npm install`
 - `npm run dev` — concurrent `tsc -w` + `sls offline` (region `eu-north-1`)
 - `npm run build` — `tsc && tsc-alias`
 - `npm run test` — Jest, runs in band against `.build/`
@@ -76,19 +76,19 @@ The migration plan is `MIGRATION_DAY_BY_DAY_PLAN.md`; **current status & remaini
 - Tests: Vitest + Testing Library + happy-dom. Test files live in `client/src/test/**`.
 - MUI theme + CssBaseline + HelmetProvider are mounted in `client/src/main.tsx`.
 
-### Serverless API (`server_v2/`)
+### Serverless API (`server/`)
 - TypeScript Lambdas with custom routing under `src/modules/<route>/<method>/index.ts` (filesystem maps to URL).
 - Public modules: `api/teachers`, `api/graduates`, `api/layout`, `api/upload`, `api/upload-image`, `api/gratitudes`, `api/openapi`, and the top-level **`sitemap.xml/get/`** (public, edge-cached for 3600s).
 - Services in `src/services/`: `teacher-service.ts`, `graduate-service.ts`, `layout-service.ts`, `sitemap-service.ts` (`buildSitemapXml` + `resolvePublicSiteBase`), `upload-service.ts`, `slug.ts`, `teacher-slug.ts`, `counters.ts`, `image-derivative-processor.ts`.
-- Image pipeline: S3 `ObjectCreated` on originals (`images/`, `teachers_img/images/`, `graduates_img/images/`) triggers `src/handlers/s3-image-derivatives.ts`, which uses `sharp` to write `images-webp/` and `images-thumbs-webp/` siblings. `POST /api/upload/presign` returns `webpUrl` and `thumbUrl`. Docs: `server_v2/docs/IMAGE_UPLOAD_DERIVATIVES.md`.
+- Image pipeline: S3 `ObjectCreated` on originals (`images/`, `teachers_img/images/`, `graduates_img/images/`) triggers `src/handlers/s3-image-derivatives.ts`, which uses `sharp` to write `images-webp/` and `images-thumbs-webp/` siblings. `POST /api/upload/presign` returns `webpUrl` and `thumbUrl`. Docs: `server/docs/IMAGE_UPLOAD_DERIVATIVES.md`.
 - Auth: API Gateway Cognito authorizer; admin routes verify the `cognito:groups` claim contains `admin`.
 - Logging: structured logs via `src/lib/lambda-log.ts` with correlation IDs propagated through `Engine` context.
 - Config: `src/config/env.ts`. Stage env mostly via Serverless config + SSM.
 - Tests: Jest, run in-band against compiled `.build/`. Test trees alongside handlers (`get/test.ts`).
 
 ### Sitemap (Lambda-owned)
-- Handler: `server_v2/src/modules/sitemap.xml/get/index.ts`. Edge-cached `Cache-Control: public, max-age=3600, s-maxage=3600`.
-- Builder: `server_v2/src/services/sitemap-service.ts#buildSitemapXml` enumerates static routes, then `listTeacherSlugsForSitemap()` and `listGraduateYearsForSitemap()` from DynamoDB.
+- Handler: `server/src/modules/sitemap.xml/get/index.ts`. Edge-cached `Cache-Control: public, max-age=3600, s-maxage=3600`.
+- Builder: `server/src/services/sitemap-service.ts#buildSitemapXml` enumerates static routes, then `listTeacherSlugsForSitemap()` and `listGraduateYearsForSitemap()` from DynamoDB.
 - Origin resolution: `resolvePublicSiteBase()` reads `SITE_URL` env, then `X-Public-Site-Base` CloudFront origin custom header, then `X-Forwarded-Host` / `Host`.
 - CloudFront routes `/sitemap.xml` to the API origin (see `infra/cloudfront/`).
 - **Do not ship a static `client/public/sitemap.xml`** — it would shadow this handler.
@@ -112,7 +112,7 @@ Detailed coding standards live as **project skills** under `.claude/skills/` (au
 - `seo-spa-cloudfront` — general SEO for the React SPA (titles, canonicals, sitemap, JSON-LD).
 - `serverless-framework` — Serverless config, per-function IAM, stage isolation.
 - `solid-kiss-dry` — baseline design principles.
-- `ai-llm-discovery` — generative-engine optimization (GEO/LLMO): AI-crawler permissions in `client/public/robots.txt`, `/llms.txt` manifest, `@graph`-linked JSON-LD with stable `@id`, FAQPage schema, static-shell fallback in `client/index.html`. Sitemap is Lambda-owned in `server_v2`.
+- `ai-llm-discovery` — generative-engine optimization (GEO/LLMO): AI-crawler permissions in `client/public/robots.txt`, `/llms.txt` manifest, `@graph`-linked JSON-LD with stable `@id`, FAQPage schema, static-shell fallback in `client/index.html`. Sitemap is Lambda-owned in `server`.
 
 Additional Cursor-only rules cover topics not yet ported to skills: `client-vitest-unit-tests`, `github-actions`, `lambda-logging-traceability`, `math-history-images-s3-cloudfront`, `serverless-lambda-integration-tests`, `terraform`. See `.cursor/rules/`.
 

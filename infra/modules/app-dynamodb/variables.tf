@@ -5,7 +5,7 @@ variable "project_name" {
 
 variable "hash_key_name" {
   type        = string
-  description = "Table partition key (must match app / server_v2 migration schema)."
+  description = "Table partition key (must match app / server migration schema)."
   default     = "pk"
 }
 

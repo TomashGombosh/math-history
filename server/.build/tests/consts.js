@@ -1,0 +1,16 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.TEST_MOBILE = exports.TEST_PHONE = exports.TEST_EMAIL = exports.TEST_IP = exports.TEST_STREET = exports.TEST_CITY = exports.TEST_LAST_NAME = exports.TEST_FIRST_NAME = exports.TEST_GRADUATE_YEAR_EMPTY = exports.TEST_GRADUATE_YEAR_DELETE = exports.TEST_GRADUATE_YEAR_UPDATE = exports.TEST_GRADUATE_YEAR_CREATE = void 0;
+const faker_1 = require("@faker-js/faker");
+exports.TEST_GRADUATE_YEAR_CREATE = 2094;
+exports.TEST_GRADUATE_YEAR_UPDATE = 2095;
+exports.TEST_GRADUATE_YEAR_DELETE = 2096;
+exports.TEST_GRADUATE_YEAR_EMPTY = 1888;
+exports.TEST_FIRST_NAME = `Test ${faker_1.faker.person.firstName()}`;
+exports.TEST_LAST_NAME = faker_1.faker.person.lastName();
+exports.TEST_CITY = faker_1.faker.location.city();
+exports.TEST_STREET = faker_1.faker.location.street();
+exports.TEST_IP = '127.0.0.1';
+exports.TEST_EMAIL = faker_1.faker.internet.email();
+exports.TEST_PHONE = faker_1.faker.phone.number();
+exports.TEST_MOBILE = faker_1.faker.phone.number();

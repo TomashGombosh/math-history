@@ -1,4 +1,4 @@
-/** Shapes aligned with server_v2 (see http://localhost:3000/openapi when API is running). */
+/** Shapes aligned with server (see http://localhost:3000/openapi when API is running). */
 
 export type TeachersListResponse = {
   teachers: TeacherDto[];
