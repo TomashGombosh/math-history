@@ -1,4 +1,4 @@
-/** Thrown when an API response is not OK; may include JSON `message` from server_v2. */
+/** Thrown when an API response is not OK; may include JSON `message` from server. */
 export class ApiError extends Error {
   readonly status: number;
   readonly body: unknown;

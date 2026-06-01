@@ -70,7 +70,7 @@ provider:
   stackTags:
     Name: "math-history-server"
   environment:
-    # Aligned with server_v2/.env.example (override at deploy for prod secrets / table names).
+    # Aligned with server/.env.example (override at deploy for prod secrets / table names).
     AWS_SDK_LOG_LEVEL: ${env:AWS_SDK_LOG_LEVEL, 'warn'}
     NODE_ENV: ${env:NODE_ENV, 'stage'}
     DYNAMODB_TABLE_NAME: ${self:custom.dynamodbTableName}

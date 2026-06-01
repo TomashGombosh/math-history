@@ -1,6 +1,6 @@
 /**
  * Client-side hint only — API Gateway + Lambda enforce admin via JWT claims.
- * Mirrors server_v2 `admin-auth.ts` (role + cognito:groups).
+ * Mirrors server `admin-auth.ts` (role + cognito:groups).
  */
 
 function groupsIncludeAdmin(groups: unknown): boolean {

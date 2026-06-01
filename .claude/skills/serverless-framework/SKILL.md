@@ -1,6 +1,6 @@
 ---
 name: serverless-framework
-description: Serverless Framework deployment and operational standards for `server_v2/` (and any `serverless.yml`/`serverless.ts`). Use when editing the Serverless config, function handlers, IAM, stage variables, or deploy artifacts. Stages are `dev`, `staging`, `prod`.
+description: Serverless Framework deployment and operational standards for `server/` (and any `serverless.yml`/`serverless.ts`). Use when editing the Serverless config, function handlers, IAM, stage variables, or deploy artifacts. Stages are `dev`, `staging`, `prod`.
 ---
 
 # Serverless Framework rules

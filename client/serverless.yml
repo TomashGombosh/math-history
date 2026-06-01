@@ -1,7 +1,7 @@
 # Private S3 bucket for the Vite/React SPA build output. No static website hosting:
 # CloudFront (Terraform) will use OAC and point at this bucket origin.
 # Wire bucket policy + OAC + distribution in Terraform using outputs below.
-# Same org as server_v2 when using Serverless Dashboard / license (set in CI via SERVERLESS_ACCESS_KEY).
+# Same org as server when using Serverless Dashboard / license (set in CI via SERVERLESS_ACCESS_KEY).
 org: afjsolution
 service: math-history-client-static
 frameworkVersion: "4"

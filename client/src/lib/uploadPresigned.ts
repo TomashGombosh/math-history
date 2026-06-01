@@ -12,7 +12,7 @@ export interface PresignImageResponse {
 }
 
 /**
- * Request presigned PUT from server_v2, then upload the file bytes to S3.
+ * Request presigned PUT from server, then upload the file bytes to S3.
  */
 export async function uploadImageWithPresign(
   file: File,

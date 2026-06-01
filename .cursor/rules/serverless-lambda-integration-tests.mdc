@@ -1,13 +1,13 @@
 ---
-description: Co-located Jest integration tests for server_v2 (serverless-jest-plugin, modules/**/test.ts)
+description: Co-located Jest integration tests for server (serverless-jest-plugin, modules/**/test.ts)
 globs:
-  - "**/server_v2/src/modules/**/test.ts"
-  - "**/server_v2/src/tests/app.ts"
-  - "**/server_v2/scripts/generate-test-tree.cjs"
+  - "**/server/src/modules/**/test.ts"
+  - "**/server/src/tests/app.ts"
+  - "**/server/scripts/generate-test-tree.cjs"
 alwaysApply: false
 ---
 
-# Serverless Lambda integration tests (`server_v2`)
+# Serverless Lambda integration tests (`server`)
 
 Tests invoke real handlers via **`lambda-wrapper`**, loaded from **`serverless-jest-plugin`** (`require('serverless-jest-plugin').lambdaWrapper` is the full **`lambda-wrapper` module**, so use **`lambdaWrapper.wrap(mod, { handler: 'handler' | 'consumer' })`** — not `lambdaWrapper` as the `wrap` function alone).
 
@@ -57,9 +57,9 @@ Jest runs a single entry: **`jest.config.cjs`** → `testMatch`: **`.build/tests
 
 ## Test coverage tree generator
 
-- Script: **`server_v2/scripts/generate-test-tree.cjs`**
-- Run: **`npm run test:tree`** from **`server_v2`** (or **`node server_v2/scripts/generate-test-tree.cjs`** from repo root).
-- Walks **`src/modules`**, parses the **default** `TESTS` list from **`src/tests/app.ts`**, writes **`server_v2/test/test-tree.yml`** (nested YAML with **`is_readme`**, **`is_test`**, **`is_covered`**, etc.).
+- Script: **`server/scripts/generate-test-tree.cjs`**
+- Run: **`npm run test:tree`** from **`server`** (or **`node server/scripts/generate-test-tree.cjs`** from repo root).
+- Walks **`src/modules`**, parses the **default** `TESTS` list from **`src/tests/app.ts`**, writes **`server/test/test-tree.yml`** (nested YAML with **`is_readme`**, **`is_test`**, **`is_covered`**, etc.).
 - Do not use **`*/**`** inside block comments in TypeScript near route globs — **`**/`** closes the comment early.
 
 ## Minimal example (`modules/api/graduates/get/test.ts`)
