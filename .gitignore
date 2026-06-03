@@ -34,8 +34,4 @@ logs
 crash.*.log
 *.lock.hcl
 
-# AI Artifacts
 .design/
-.features/
-TASKS.md
-
