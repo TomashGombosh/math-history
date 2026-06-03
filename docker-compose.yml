@@ -1,13 +1,19 @@
-# Local stack (full project). For a slimmer test-only stack (CI / npm test), see docker-compose.test.yml.
-# Local stack for server integration tests (DynamoDB + MinIO):
-#   docker compose up -d dynamodb dynamodb-migrate minio s3-init
-#   server/.env: DYNAMODB_ENDPOINT=http://127.0.0.1:8000 S3_ENDPOINT=http://127.0.0.1:9000
-#   AWS_ACCESS_KEY_ID=local AWS_SECRET_ACCESS_KEY=local (or MinIO roots: local / locallocal)
-#   then: cd server && npm test
+# Local stack: DynamoDB + MinIO + Serverless API + React client.
+# For CI / server integration tests only, see docker-compose.test.yml.
+#
+# Usage (repo root):
+#   docker compose up --build
+#
+#   React client:  http://localhost:5173
+#   Serverless API: http://localhost:3000
+#   DynamoDB Local: http://127.0.0.1:8000
+#   MinIO (S3):    http://127.0.0.1:9000  (console :9001)
+#
+# Host-only API/dev (containers already up):
+#   server/.env → DYNAMODB_ENDPOINT=http://127.0.0.1:8000 S3_ENDPOINT=http://127.0.0.1:9000
+#   AWS_ACCESS_KEY_ID=local AWS_SECRET_ACCESS_KEY=locallocal
+
 services:
-  # DynamoDB Local (port 8000). Table math-history-ddb-local is created by dynamodb-migrate.
-  # serverless-offline on the host: server/.env → DYNAMODB_ENDPOINT=http://127.0.0.1:8000
-  # A process in this compose network: DYNAMODB_ENDPOINT=http://dynamodb:8000
   dynamodb:
     image: amazon/dynamodb-local:latest
     container_name: math-history-dynamodb-local
@@ -27,6 +33,7 @@ services:
       AWS_ACCESS_KEY_ID: local
       AWS_SECRET_ACCESS_KEY: local
       AWS_DEFAULT_REGION: eu-north-1
+      AWS_EC2_METADATA_DISABLED: "true"
     volumes:
       - ./server/migration/table.json:/migration/table.json:ro
     restart: "no"
@@ -35,12 +42,18 @@ services:
       - |
         set -e
         ENDPOINT=http://dynamodb:8000
-        for i in $$(seq 1 60); do
+        i=0
+        while [ "$$i" -lt 60 ]; do
           if aws dynamodb list-tables --endpoint-url "$$ENDPOINT" >/dev/null 2>&1; then
             break
           fi
+          i=$$((i + 1))
           sleep 1
         done
+        if [ "$$i" -ge 60 ]; then
+          echo "DynamoDB did not become ready in time"
+          exit 1
+        fi
         if aws dynamodb describe-table --table-name math-history-ddb-local --endpoint-url "$$ENDPOINT" >/dev/null 2>&1; then
           echo "DynamoDB table math-history-ddb-local already exists."
           exit 0
@@ -48,7 +61,53 @@ services:
         aws dynamodb create-table --cli-input-json file:///migration/table.json --endpoint-url "$$ENDPOINT"
         echo "DynamoDB table math-history-ddb-local created."
 
-  # MinIO (S3-compatible). Host: S3_ENDPOINT=http://127.0.0.1:9000, bucket in server/.env S3_DATA_BUCKET
+  dynamodb-seed:
+    image: node:20-alpine
+    container_name: math-history-dynamodb-seed
+    working_dir: /app/server
+    depends_on:
+      dynamodb-migrate:
+        condition: service_completed_successfully
+    environment:
+      AWS_REGION: eu-north-1
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: local
+      DYNAMODB_TABLE_NAME: math-history-ddb-local
+      DYNAMODB_ENDPOINT: http://dynamodb:8000
+    volumes:
+      - ./:/app
+      - /app/server/node_modules
+    restart: "no"
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        set -e
+        npm install --silent
+        ENDPOINT="http://dynamodb:8000"
+        TABLE="math-history-ddb-local"
+        if node -e "
+          const { DynamoDBClient, GetItemCommand } = require('@aws-sdk/client-dynamodb');
+          const client = new DynamoDBClient({
+            region: process.env.AWS_REGION,
+            endpoint: process.env.DYNAMODB_ENDPOINT,
+            credentials: { accessKeyId: 'local', secretAccessKey: 'local' },
+          });
+          client
+            .send(new GetItemCommand({
+              TableName: process.env.DYNAMODB_TABLE_NAME,
+              Key: { pk: { S: 'CONFIG' }, sk: { S: 'LAYOUT' } },
+            }))
+            .then((r) => process.exit(r.Item ? 0 : 1))
+            .catch(() => process.exit(1));
+        "; then
+          echo "DynamoDB seed already present, skipping."
+          exit 0
+        fi
+        node scripts/load-teachers-dynamodb.mjs migration/data/teachers-seed.json "$$TABLE" "$$ENDPOINT"
+        node scripts/load-graduates-dynamodb.mjs migration/data/graduates-seed.json "$$TABLE" "$$ENDPOINT"
+        node scripts/load-layout-dynamodb.mjs migration/data/layout-seed.json "$$TABLE" "$$ENDPOINT"
+        echo "DynamoDB seed complete."
+
   minio:
     image: minio/minio:latest
     container_name: math-history-minio-local
@@ -80,95 +139,46 @@ services:
       MINIO_ROOT_USER: local
       MINIO_ROOT_PASSWORD: locallocal
 
-  postgres:
-    image: postgres:16-alpine
-    container_name: math-history-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: teachers_db
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin
-    ports:
-      - "5432:5432"
-    volumes:
-      - ./.docker/postgres:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d teachers_db"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-
-  db-migrate:
-    image: postgres:16-alpine
-    container_name: math-history-db-migrate
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      PGPASSWORD: admin
-    volumes:
-      - ./migrations:/migrations:ro
-    command:
-      - /bin/sh
-      - -ec
-      - |
-        psql -h postgres -U admin -d teachers_db -v ON_ERROR_STOP=1 <<'SQL'
-        DO $$$$
-        BEGIN
-          IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'postgres') THEN
-            CREATE ROLE postgres;
-          END IF;
-        END
-        $$$$;
-        SQL
-
-        table_exists="$$(psql -h postgres -U admin -d teachers_db -tAc "SELECT to_regclass('public.\"Teachers\"') IS NOT NULL;")"
-        if [ "$$table_exists" = "t" ]; then
-          echo "Migration skipped: schema already exists."
-          exit 0
-        fi
-
-        sed -e '/transaction_timeout/d' -e 's/OWNER TO postgres/OWNER TO admin/g' /migrations/teachers_db_dump.sql \
-          | psql -h postgres -U admin -d teachers_db -v ON_ERROR_STOP=1
-    restart: "no"
-
-  nuxt:
+  server:
     image: node:20-alpine
-    container_name: math-history-nuxt
-    working_dir: /app
+    container_name: math-history-server
+    working_dir: /app/server
     depends_on:
-      db-migrate:
+      dynamodb-seed:
+        condition: service_completed_successfully
+      s3-init:
         condition: service_completed_successfully
     environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: teachers_db
-      DB_USER: admin
-      DB_PASSWORD: admin
-      DB_SSL: "false"
-      NODE_ENV: development
+      NODE_ENV: local
+      AWS_REGION: eu-north-1
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: locallocal
+      DYNAMODB_TABLE_NAME: math-history-ddb-local
+      DYNAMODB_ENDPOINT: http://dynamodb:8000
+      S3_DATA_BUCKET: math-history-server-data-local
+      S3_ENDPOINT: http://minio:9000
+      CORS_ORIGIN: http://localhost:5173
     ports:
-      - "3001:3000"
+      - "3000:3000"
     volumes:
       - ./:/app
-      - /app/node_modules
-    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 3000"
+      - /app/server/node_modules
+    command: sh -c "npm install && npm run dev"
 
   react-router:
     image: node:20-alpine
     container_name: math-history-react-router
     working_dir: /app/client
     depends_on:
-      nuxt:
+      server:
         condition: service_started
     environment:
       NODE_ENV: development
       VITE_SITE_URL: http://localhost:5173
-      VITE_API_URL: http://nuxt:3000
+      VITE_API_URL: http://localhost:3000
     ports:
       - "5173:5173"
     volumes:
       - ./:/app
       - /app/client/node_modules
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
-
