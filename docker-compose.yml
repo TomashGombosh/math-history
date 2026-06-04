@@ -210,7 +210,7 @@ services:
       MINIO_ROOT_PASSWORD: locallocal
 
   server:
-    image: node:20-alpine
+    image: node:24-alpine
     container_name: math-history-server
     working_dir: /app/server
     depends_on:

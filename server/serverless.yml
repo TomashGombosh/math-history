@@ -16,7 +16,6 @@ custom:
   # HTTP API JWT authorizer. CI/deploy sets COGNITO_JWT_*; placeholders for sls offline.
   cognitoJwtIssuer: ${env:COGNITO_JWT_ISSUER, 'https://cognito-idp.eu-north-1.amazonaws.com/local'}
   cognitoJwtAudience: ${env:COGNITO_JWT_AUDIENCE, 'local-client-id'}
-  # Empty CORS_ORIGIN must not reach httpApi.cors (API Gateway rejects ""). CI coalesces to SITE_URL.
   corsOrigin: ${env:CORS_ORIGIN, 'http://localhost:5173'}
   serverless-offline:
     httpPort: 3000
@@ -32,6 +31,22 @@ provider:
   memorySize: 256
   timeout: 29
   httpApi:
+    cors:
+      allowedOrigins:
+        - ${self:custom.corsOrigin}
+        - http://127.0.0.1:5173
+      allowedHeaders:
+        - Content-Type
+        - Authorization
+        - X-Requested-With
+      allowedMethods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+      allowCredentials: true
+      maxAge: 3600
     cors:
       allowedOrigins:
         - ${self:custom.corsOrigin}
