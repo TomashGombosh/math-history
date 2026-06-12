@@ -1,3 +1,4 @@
+import '@config/bootstrap-env';
 import { S3Client } from '@aws-sdk/client-s3';
 import { awsSdkLogger } from './aws-sdk-logger';
 
