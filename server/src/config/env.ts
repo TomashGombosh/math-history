@@ -1,8 +1,6 @@
+import './bootstrap-env';
 import { z } from 'zod';
 import type { AppConfig, NodeEnv } from './types';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 /** Empty / whitespace-only env → undefined (unset). */
 function optionalTrimmed(message = 'Cannot be empty when set') {
