@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ReportContext } from "./ReportContenxt";
+import ReportDialog from "../components/ReportDialog";
 
 type Props = {
     children: ReactNode;
@@ -36,6 +37,11 @@ const ReportProvider = ({children}:Props) => {
   return (
     <ReportContext.Provider value={value}>
         {children}
+        <ReportDialog 
+            open={open} 
+            componentName={hoveredComponent || ""} 
+            onClose={() => setOpen(false)}
+        />
     </ReportContext.Provider>
   )
 }
