@@ -10,7 +10,6 @@ type Props = {
 const ReportDialog = ({ open, componentName, onClose }: Props) => {
     const [email, setEmail] = useState<string>("");
     const [comment, setComment] = useState<string>("")
-    console.log("ReportDialog rendered with componentName:", componentName);
     const handleSubmit = async () => {
         console.log(JSON.stringify({
             email,

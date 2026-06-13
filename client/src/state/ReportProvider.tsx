@@ -9,6 +9,7 @@ type Props = {
 const ReportProvider = ({children}:Props) => {
     const [hoveredComponent, setHoveredComponent] = useState<string | null>(null);
     const [open, setOpen] = useState<boolean>(false)
+    const [selectedComponent, setSelectedComponent] = useState<string | null>(null);
 
     useEffect(() => {
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -19,6 +20,7 @@ const ReportProvider = ({children}:Props) => {
                 e.preventDefault();
 
                 if (hoveredComponent){
+                    setSelectedComponent(hoveredComponent)
                     setOpen(true);
                 }
             }
@@ -39,8 +41,11 @@ const ReportProvider = ({children}:Props) => {
         {children}
         <ReportDialog 
             open={open} 
-            componentName={hoveredComponent || ""} 
-            onClose={() => setOpen(false)}
+            componentName={selectedComponent || ""} 
+            onClose={() => {
+                setOpen(false);
+                setSelectedComponent(null);
+            }}
         />
     </ReportContext.Provider>
   )
