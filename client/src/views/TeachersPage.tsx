@@ -14,6 +14,7 @@ import { ROUTES } from "../router/paths";
 import { apiGet } from "../services/api";
 import type { TeacherDto, TeachersCursorResponse } from "../lib/apiTypes";
 import "./TeachersPage.css";
+import Reportable from "../components/Reportable";
 
 type Teacher = { id: number; slug: string; name: string; imageUrl?: string | null };
 
@@ -109,10 +110,12 @@ export default function TeachersPage() {
           <>
             <div className="grid">
               {teachers.map((t) => (
-                <Link key={t.id} to={ROUTES.teacherSlug(t.slug)} className="card">
-                  <div className="image-wrapper">{t.imageUrl ? <img src={t.imageUrl} alt={t.name} /> : null}</div>
-                  <div className="name">{t.name}</div>
-                </Link>
+                <Reportable componentName={`Карточка викладача: ${t.name}`} key={t.id}>
+                  <Link to={ROUTES.teacherSlug(t.slug)} className="card">
+                    <div className="image-wrapper">{t.imageUrl ? <img src={t.imageUrl} alt={t.name} /> : null}</div>
+                    <div className="name">{t.name}</div>
+                  </Link>
+                </Reportable>
               ))}
             </div>
             {lastEvaluatedKey ? (

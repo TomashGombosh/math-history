@@ -16,6 +16,7 @@ import { ROUTES } from "../router/paths";
 import { apiGet } from "../services/api";
 import type { GraduateYearSummary, TeacherDto, TeachersCursorResponse } from "../lib/apiTypes";
 import "./HomePage.css";
+import Reportable from "../components/Reportable";
 
 type Teacher = { id: number; slug: string; name: string; imageUrl?: string | null };
 type YearItem = { year: number; totalStudents: number; totalWithHonours: number };
@@ -149,10 +150,12 @@ export default function HomePage() {
             </div>
             <div className="teachers-grid">
               {teachers.map((t) => (
-                <Link key={t.id} to={ROUTES.teacherSlug(t.slug)} className="teacher-card">
-                  <div className="image-wrapper">{t.imageUrl ? <img src={t.imageUrl} alt={t.name} /> : null}</div>
-                  <div className="t-name">{t.name}</div>
-                </Link>
+                <Reportable componentName={`Карточка викладача: ${t.name}`} key={t.id}>
+                  <Link to={ROUTES.teacherSlug(t.slug)} className="teacher-card">
+                    <div className="image-wrapper">{t.imageUrl ? <img src={t.imageUrl} alt={t.name} /> : null}</div>
+                    <div className="t-name">{t.name}</div>
+                  </Link>
+                </Reportable>
               ))}
             </div>
             {!teachers.length ? <p className="home-empty-hint">Немає даних про викладачів.</p> : null}
