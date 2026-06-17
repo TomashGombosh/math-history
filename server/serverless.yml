@@ -10,9 +10,13 @@ custom:
   logRetentionInDays:
     prod: 90
     default: 7
-  # HTTP API JWT authorizer (set at deploy; see repo docs or Terraform cognito outputs).
-  cognitoJwtIssuer: ${env:COGNITO_JWT_ISSUER}
-  cognitoJwtAudience: ${env:COGNITO_JWT_AUDIENCE}
+  # HTTP API JWT authorizer. CI/deploy sets COGNITO_JWT_*; placeholders for sls offline.
+  cognitoJwtIssuer: ${env:COGNITO_JWT_ISSUER, 'https://cognito-idp.eu-north-1.amazonaws.com/local'}
+  cognitoJwtAudience: ${env:COGNITO_JWT_AUDIENCE, 'local-client-id'}
+  corsOrigin: ${env:CORS_ORIGIN, 'http://localhost:5173'}
+  serverless-offline:
+    httpPort: 3000
+    ignoreJWTSignature: true
 
 provider:
   name: aws
@@ -24,6 +28,22 @@ provider:
   memorySize: 256
   timeout: 29
   httpApi:
+    cors:
+      allowedOrigins:
+        - ${self:custom.corsOrigin}
+        - http://127.0.0.1:5173
+      allowedHeaders:
+        - Content-Type
+        - Authorization
+        - X-Requested-With
+      allowedMethods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+      allowCredentials: true
+      maxAge: 3600
     authorizers:
       cognitoJwt:
         type: jwt

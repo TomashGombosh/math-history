@@ -1,3 +1,4 @@
+import '@config/bootstrap-env';
 import type { Context } from 'aws-lambda';
 import type { AnyDict, Engine, IRequest, User } from '@interfaces/types';
 import * as fs from 'fs';

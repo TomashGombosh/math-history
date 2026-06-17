@@ -33,3 +33,5 @@ logs
 *.tfstate.*
 crash.*.log
 *.lock.hcl
+
+.design/
