@@ -27,21 +27,30 @@ resource "aws_dynamodb_table" "main" {
     type = "S"
   }
 
-  attribute {
-    name = var.gsi1_hash_key_name
-    type = "S"
+  dynamic "attribute" {
+    for_each = var.enable_gsi1 ? [1] : []
+    content {
+      name = var.gsi1_hash_key_name
+      type = "S"
+    }
   }
 
-  attribute {
-    name = var.gsi1_range_key_name
-    type = "S"
+  dynamic "attribute" {
+    for_each = var.enable_gsi1 ? [1] : []
+    content {
+      name = var.gsi1_range_key_name
+      type = "S"
+    }
   }
 
-  global_secondary_index {
-    name            = var.gsi1_name
-    hash_key        = var.gsi1_hash_key_name
-    range_key       = var.gsi1_range_key_name
-    projection_type = "ALL"
+  dynamic "global_secondary_index" {
+    for_each = var.enable_gsi1 ? [1] : []
+    content {
+      name            = var.gsi1_name
+      hash_key        = var.gsi1_hash_key_name
+      range_key       = var.gsi1_range_key_name
+      projection_type = "ALL"
+    }
   }
 
   point_in_time_recovery {
