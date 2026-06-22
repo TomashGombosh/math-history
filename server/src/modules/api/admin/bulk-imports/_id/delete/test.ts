@@ -60,8 +60,8 @@ module.exports = (wrapped: any, expect: any, requestContext: any) =>
 
 			expect(await getJob(job.jobId)).toBeNull();
 			const lock = await getBulkItem({ Key: { pk: LOCK_PK, sk: LOCK_SK } });
-			expect(lock).toBeNull();
+			expect(lock).toBeUndefined();
 			const meta = await getBulkItem({ Key: { pk: jobPk(job.jobId), sk: jobMetaSk() } });
-			expect(meta).toBeNull();
+			expect(meta).toBeUndefined();
 		});
 	});
