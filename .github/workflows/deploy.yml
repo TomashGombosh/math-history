@@ -1,4 +1,4 @@
-# Deploys infra stacks after merge. Branch → GitHub Environment:
+# Triggers: push to development/main, or manual workflow_dispatch (branch selects environment).
 #   development → environment "stage" (stage AWS)
 #   main        → environment "production" (prod AWS)
 #
@@ -72,6 +72,7 @@ on:
     branches:
       - development
       - main
+  workflow_dispatch:
 
 concurrency:
   group: deploy-infra-${{ github.ref }}
