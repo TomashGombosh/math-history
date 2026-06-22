@@ -1,4 +1,5 @@
 import type {
+	BatchWriteCommandInput,
 	DeleteCommandInput,
 	GetCommandInput,
 	PutCommandInput,
@@ -7,6 +8,7 @@ import type {
 	UpdateCommandInput,
 } from '@aws-sdk/lib-dynamodb';
 import {
+	BatchWriteCommand,
 	DeleteCommand,
 	GetCommand,
 	PutCommand,
@@ -93,4 +95,25 @@ export async function scanBulkItems<T extends Record<string, unknown> = Record<s
 		items: (res.Items ?? []) as T[],
 		lastEvaluatedKey: res.LastEvaluatedKey as Record<string, unknown> | undefined,
 	};
+}
+
+const BATCH_WRITE_CHUNK = 25;
+
+export async function batchWriteBulkItems(
+	writeRequests: NonNullable<BatchWriteCommandInput['RequestItems']>[string],
+): Promise<void> {
+	if (writeRequests.length === 0) return;
+
+	const table = bulkTableName();
+	for (let offset = 0; offset < writeRequests.length; offset += BATCH_WRITE_CHUNK) {
+		let pending = writeRequests.slice(offset, offset + BATCH_WRITE_CHUNK);
+		while (pending.length > 0) {
+			const res = await docClient.send(
+				new BatchWriteCommand({
+					RequestItems: { [table]: pending },
+				}),
+			);
+			pending = res.UnprocessedItems?.[table] ?? [];
+		}
+	}
 }
