@@ -61,6 +61,10 @@ describe("AdminNav", () => {
       "href",
       ROUTES.adminTeachers
     );
+    expect(screen.getByRole("link", { name: "Імпорт з DOCX" })).toHaveAttribute(
+      "href",
+      ROUTES.adminImports
+    );
     await user.click(toggle);
     expect(screen.queryByRole("link", { name: "Таблиця викладачів" })).not.toBeInTheDocument();
   });

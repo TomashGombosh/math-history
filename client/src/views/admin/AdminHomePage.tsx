@@ -16,6 +16,7 @@ export default function AdminHomePage() {
         <li><Link to={ROUTES.adminTeachersLayout}>Структура сторінки викладача</Link></li>
         <li><Link to={ROUTES.adminGraduates}>Список випусків</Link></li>
         <li><Link to={ROUTES.adminGraduatesCreate}>Додати випуск</Link></li>
+        <li><Link to={ROUTES.adminImports}>Імпорт з DOCX</Link></li>
       </ul>
       <button
         className="logout-btn"
