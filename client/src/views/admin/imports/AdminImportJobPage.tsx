@@ -1,6 +1,8 @@
 import { useParams } from "react-router-dom";
 import type { BulkImportCounts } from "../../../lib/apiTypes";
 import "../AdminPages.css";
+import { BulkImportEditableTables } from "./BulkImportEditableTables";
+import { BulkImportJobActions } from "./BulkImportJobActions";
 import { useBulkImportStatus } from "./useBulkImportStatus";
 
 function CountsSummary({ counts }: { counts: BulkImportCounts | null }) {
@@ -13,7 +15,7 @@ function CountsSummary({ counts }: { counts: BulkImportCounts | null }) {
 }
 
 function AdminImportJobContent({ jobId }: { jobId: string }) {
-  const { status, counts, error, loading } = useBulkImportStatus(jobId);
+  const { status, counts, candidates, error, loading, refetch } = useBulkImportStatus(jobId);
   const showProgress = loading || status === "in_progress";
 
   return (
@@ -29,8 +31,10 @@ function AdminImportJobContent({ jobId }: { jobId: string }) {
 
       {status === "success" ? (
         <>
-          <p className="admin-success">Обробку завершено</p>
+          <p className="admin-success">Обробку завершено — перегляньте записи перед застосуванням</p>
           <CountsSummary counts={counts} />
+          <BulkImportEditableTables jobId={jobId} candidates={candidates} onChanged={refetch} />
+          <BulkImportJobActions jobId={jobId} />
         </>
       ) : null}
 

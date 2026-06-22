@@ -47,7 +47,7 @@ describe("useBulkImportStatus", () => {
 
     await flushPromises();
     expect(mockApiGetAuthed).toHaveBeenCalledTimes(1);
-    expect(mockApiGetAuthed).toHaveBeenCalledWith("api/admin/bulk-imports/job-1");
+    expect(mockApiGetAuthed).toHaveBeenCalledWith("api/admin/bulk-imports/job-1", { limit: 500 });
     expect(result.current.status).toBe("in_progress");
     expect(result.current.loading).toBe(false);
 
