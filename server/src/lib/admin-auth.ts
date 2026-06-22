@@ -1,7 +1,7 @@
 import type { IRequest } from '@interfaces/types';
 import { logWarn, logInfo } from './lambda-log';
 
-type ApiGatewayEventLike = {
+export type ApiGatewayEventLike = {
 	requestContext?: {
 		authorizer?: Record<string, unknown>;
 		http?: {
@@ -139,4 +139,15 @@ export function assertAuthenticatedRequest(_req: IRequest, event: ApiGatewayEven
 	if (!isCognitoAdminAuthorizer(event)) {
 		throw new Error('UNAUTHORIZED');
 	}
+}
+
+/** Cognito `sub` claim from API Gateway JWT authorizer context, when present. */
+export function getJwtSubjectFromEvent(event: ApiGatewayEventLike): string | undefined {
+	const claims = jwtClaimsFromEvent(event);
+	const sub = claims?.sub;
+	if (typeof sub !== 'string') {
+		return undefined;
+	}
+	const trimmed = sub.trim();
+	return trimmed || undefined;
 }
