@@ -6,6 +6,9 @@ frameworkVersion: "4"
 # (e.g. math-history-server-ddb-stage). Falls back to ${service}-ddb-${sls:stage}.
 custom:
   dynamodbTableName: ${env:DYNAMODB_TABLE_NAME, '${self:service}-ddb-${sls:stage}'}
+  bulkDdbTable: ${env:BULK_DDB_TABLE, '${self:service}-bulkimport-ddb-${sls:stage}'}
+  bulkQueueUrl: ${env:BULK_QUEUE_URL, ''}
+  bulkQueueArn: ${env:BULK_QUEUE_ARN, 'arn:aws:sqs:eu-north-1:111111111111:math-history-server-bulkimport-local'}
   s3DataBucket: ${env:S3_DATA_BUCKET, '${self:service}-data-${sls:stage}'}
   logRetentionInDays:
     prod: 90
@@ -90,6 +93,34 @@ provider:
                 - DynamoTable: ${self:custom.dynamodbTableName}
         - Effect: Allow
           Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:Query
+            - dynamodb:BatchWriteItem
+          Resource:
+            - Fn::Sub:
+                - 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${BulkTable}'
+                - BulkTable: ${self:custom.bulkDdbTable}
+            - Fn::Sub:
+                - 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${BulkTable}/index/*'
+                - BulkTable: ${self:custom.bulkDdbTable}
+        - Effect: Allow
+          Action:
+            - sqs:SendMessage
+          Resource:
+            - ${self:custom.bulkQueueArn}
+        - Effect: Allow
+          Action:
+            - sqs:ReceiveMessage
+            - sqs:DeleteMessage
+            - sqs:GetQueueAttributes
+            - sqs:ChangeMessageVisibility
+          Resource:
+            - ${self:custom.bulkQueueArn}
+        - Effect: Allow
+          Action:
             - ses:SendEmail
           Resource: "*"
           Condition:
@@ -121,6 +152,10 @@ provider:
     SES_SENDER: ${env:SES_SENDER, ''}
     SES_REGION: ${env:SES_REGION, '${aws:region}'}
     REVIEW_NOTIFY_FALLBACK: ${env:REVIEW_NOTIFY_FALLBACK, ''}
+    BULK_DDB_TABLE: ${self:custom.bulkDdbTable}
+    BULK_QUEUE_URL: ${self:custom.bulkQueueUrl}
+    BULK_BEDROCK_ENABLED: ${env:BULK_BEDROCK_ENABLED, 'false'}
+    BULK_BEDROCK_MODEL_ID: ${env:BULK_BEDROCK_MODEL_ID, ''}
 
 functions:
   imageDerivatives:
@@ -158,6 +193,36 @@ functions:
           rules:
             - prefix: graduates_img/images/
           existing: true
+  bulkSplit:
+    handler: .build/handlers/s3-bulk-split.handler
+    description: S3 ObjectCreated on bulk-imports/*.docx → split chunks + enqueue SQS
+    memorySize: 1024
+    timeout: 120
+    reservedConcurrency: 2
+    package:
+      individually: true
+      patterns:
+        - ".build/**"
+        - "node_modules/mammoth/**"
+    events:
+      - s3:
+          bucket: ${self:custom.s3DataBucket}
+          event: s3:ObjectCreated:*
+          rules:
+            - prefix: bulk-imports/
+            - suffix: .docx
+          existing: true
+  bulkProcess:
+    handler: .build/handlers/sqs-bulk-process.handler
+    description: SQS chunk messages → extract, compare, stage candidates
+    memorySize: 512
+    timeout: 30
+    reservedConcurrency: 5
+    events:
+      - sqs:
+          arn: ${self:custom.bulkQueueArn}
+          batchSize: 5
+          functionResponseType: ReportBatchItemFailures
   api:
     handler: .build/index.handler
     events:
