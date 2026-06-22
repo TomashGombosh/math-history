@@ -21,7 +21,7 @@
 #   Per-environment variables (recommended):
 #     COGNITO_JWT_ISSUER, COGNITO_JWT_AUDIENCE — HTTP API JWT authorizer (per-environment secrets; match Terraform Cognito outputs)
 #     SECURITY_GROUP_ID, SUBNET_ID — Lambda VPC (required by server/serverless.yml)
-#     CORS_ORIGIN — optional browser origin for API CORS
+#     CORS_ORIGIN — optional browser origin for API CORS (defaults to VITE_SITE_URL when unset)
 #     SITE_URL — same canonical public origin as VITE_SITE_URL (https://CLOUDFRONT_ALIAS, no trailing slash).
 #       Required for correct sitemap <loc> when CloudFront uses AllViewerExceptHostHeader (Host at Lambda is execute-api).
 #     TEACHER_IMAGE_CDN_BASE — public origin for teacher photos (assets CloudFront / `teachers/*` keys); no trailing slash.
@@ -231,11 +231,15 @@ jobs:
           NODE_ENV: ${{ steps.target.outputs.node_env }}
           SECURITY_GROUP_ID: ${{ vars.SECURITY_GROUP_ID }}
           SUBNET_ID: ${{ vars.SUBNET_ID }}
-          CORS_ORIGIN: ${{ vars.CORS_ORIGIN }}
+          CORS_ORIGIN: ${{ vars.CORS_ORIGIN || vars.VITE_SITE_URL }}
           SITE_URL: ${{ vars.VITE_SITE_URL }}
           TEACHER_IMAGE_CDN_BASE: ${{ vars.TEACHER_IMAGE_CDN_BASE }}
           SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
-        run: npx serverless deploy --stage ${{ steps.target.outputs.tf_env }} --region ${{ env.AWS_REGION }}
+        run: |
+          set -euo pipefail
+          # API Gateway rejects empty allowedOrigins; env var set to "" bypasses Serverless defaults.
+          export CORS_ORIGIN="${CORS_ORIGIN:-${SITE_URL:-http://localhost:5173}}"
+          npx serverless deploy --stage ${{ steps.target.outputs.tf_env }} --region ${{ env.AWS_REGION }}
 
   deploy-client-static:
     name: Deploy client (static site)
