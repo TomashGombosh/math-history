@@ -363,6 +363,7 @@ jobs:
           SES_REGION: ${{ env.AWS_REGION }}
           BULK_DDB_TABLE: math-history-server-bulkimport-ddb-${{ steps.target.outputs.tf_env }}
           BULK_QUEUE_URL: ${{ vars.BULK_QUEUE_URL }}
+          BULK_QUEUE_ARN: ${{ vars.BULK_QUEUE_ARN }}
           BULK_DLQ_URL: ${{ vars.BULK_DLQ_URL }}
           BULK_BEDROCK_ENABLED: ${{ vars.BULK_BEDROCK_ENABLED || 'false' }}
           SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
