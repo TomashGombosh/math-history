@@ -28,6 +28,11 @@
 # Serverless deploy job (same branch → environment as Terraform):
 #   Per-environment secrets: AWS_SERVERLESS_ROLE_TO_ASSUME, AWS_ACCOUNT_ID
 #   Optional secret: SERVERLESS_ACCESS_KEY — if Serverless Framework org/dashboard requires it for deploy
+#   IAM on AWS_SERVERLESS_ROLE_TO_ASSUME must include lambda:TagResource and lambda:UntagResource on
+#     arn:aws:lambda:${region}:${account}:event-source-mapping:*
+#   (stackTags on Lambda event source mappings — e.g. bulkProcess SQS trigger). Without it, deploy can
+#   create an orphan mapping and later fail with AlreadyExists (409). One-time cleanup:
+#     aws lambda delete-event-source-mapping --uuid <uuid-from-error> --region eu-north-1
 #   Per-environment variables (recommended):
 #     COGNITO_JWT_ISSUER, COGNITO_JWT_AUDIENCE — HTTP API JWT authorizer (per-environment secrets; match Terraform Cognito outputs)
 #     SECURITY_GROUP_ID, SUBNET_ID — Lambda VPC (required by server/serverless.yml)
