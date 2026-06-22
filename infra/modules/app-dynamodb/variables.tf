@@ -33,6 +33,12 @@ variable "gsi1_range_key_name" {
   default     = "gsi1sk"
 }
 
+variable "enable_gsi1" {
+  type        = bool
+  description = "Create GSI1 on the table. Set false for tables that only need pk/sk (e.g. bulk-import staging)."
+  default     = true
+}
+
 variable "environment" {
   type        = string
   description = "Deployment environment label (e.g. stage, prod)."
