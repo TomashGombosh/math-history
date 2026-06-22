@@ -1,6 +1,7 @@
 import { useParams } from "react-router-dom";
 import type { BulkImportCounts } from "../../../lib/apiTypes";
 import "../AdminPages.css";
+import { BulkImportReviewTables } from "./BulkImportReviewTables";
 import { useBulkImportStatus } from "./useBulkImportStatus";
 
 function CountsSummary({ counts }: { counts: BulkImportCounts | null }) {
@@ -13,7 +14,7 @@ function CountsSummary({ counts }: { counts: BulkImportCounts | null }) {
 }
 
 function AdminImportJobContent({ jobId }: { jobId: string }) {
-  const { status, counts, error, loading } = useBulkImportStatus(jobId);
+  const { status, counts, candidates, error, loading } = useBulkImportStatus(jobId);
   const showProgress = loading || status === "in_progress";
 
   return (
@@ -31,6 +32,7 @@ function AdminImportJobContent({ jobId }: { jobId: string }) {
         <>
           <p className="admin-success">Обробку завершено</p>
           <CountsSummary counts={counts} />
+          <BulkImportReviewTables candidates={candidates} />
         </>
       ) : null}
 
