@@ -45,6 +45,11 @@ export function resolveModulePath(
 		}
 	}
 
+	const bulkImportId = /^api\/admin\/bulk-imports\/([^/]+)$/.exec(joined);
+	if (bulkImportId && m === 'get') {
+		return { modulePath: 'api/admin/bulk-imports/_id/get', pathParams: { id: bulkImportId[1] } };
+	}
+
 	if (!joined || !m) {
 		return null;
 	}

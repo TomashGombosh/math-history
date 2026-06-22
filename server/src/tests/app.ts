@@ -60,6 +60,7 @@ describe('api', () => {
 			'api/graduates/_year/delete',
 			'api/upload/presign/post',
 			'api/admin/bulk-imports/post',
+			'api/admin/bulk-imports/_id/get',
 		] as const);
 
 	for (const module of tests) {
