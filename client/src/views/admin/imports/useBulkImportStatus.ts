@@ -39,7 +39,9 @@ export function useBulkImportStatus(jobId: string) {
 
     const loadStatus = async (): Promise<BulkImportStatus | null> => {
       try {
-        const res = await apiGetAuthed<BulkImportStatusResponse>(`api/admin/bulk-imports/${jobId}`);
+        const res = await apiGetAuthed<BulkImportStatusResponse>(`api/admin/bulk-imports/${jobId}`, {
+          limit: 500,
+        });
         if (cancelled) {
           return null;
         }
