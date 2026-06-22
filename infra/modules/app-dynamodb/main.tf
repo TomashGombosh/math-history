@@ -48,5 +48,13 @@ resource "aws_dynamodb_table" "main" {
     enabled = var.enable_point_in_time_recovery
   }
 
+  dynamic "ttl" {
+    for_each = var.ttl_attribute_name != "" ? [1] : []
+    content {
+      attribute_name = var.ttl_attribute_name
+      enabled        = true
+    }
+  }
+
   tags = local.default_tags
 }
