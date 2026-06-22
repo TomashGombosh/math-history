@@ -5,7 +5,7 @@ import { getJob, updateCandidateName } from '@services/bulk-import-service';
 
 export const handler = async (ctx: Engine) => {
 	const jobId = String(ctx.req.params.id);
-	const itemId = String(ctx.req.params.itemId);
+	const itemId = decodeURIComponent(String(ctx.req.params.itemId));
 
 	try {
 		const job = await getJob(jobId);

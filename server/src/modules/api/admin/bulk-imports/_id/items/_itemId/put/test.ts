@@ -89,5 +89,5 @@ module.exports = (wrapped: any, expect: any, requestContext: any) =>
 
 			const res = await putItem(wrapped, adminRC, job.jobId, candidate.id, { name: 'Other' });
 			expect(res.statusCode).toBe(409);
+		});
 	});
-});

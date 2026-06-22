@@ -121,6 +121,8 @@ module.exports = (wrapped: any, expect: any, requestContext: any) =>
 		afterAll(() => {
 			if (originalMainTable) {
 				process.env.DYNAMODB_TABLE_NAME = originalMainTable;
+			} else {
+				delete process.env.DYNAMODB_TABLE_NAME;
 			}
 		});
 
