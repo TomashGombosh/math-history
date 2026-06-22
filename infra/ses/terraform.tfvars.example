@@ -1,0 +1,9 @@
+# Copy to terraform.tfvars (optional for local use; CI sets TF_VAR_* instead).
+# environment must be "stage" or "prod".
+
+aws_region        = "eu-north-1"
+environment       = "stage"
+project_name      = "math-history"
+sender_domain     = "afj-solution.com"
+sender_local_part = "no-reply"
+enable_mail_from  = false

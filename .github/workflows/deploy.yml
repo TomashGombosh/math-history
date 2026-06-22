@@ -26,6 +26,8 @@
 #       Required for correct sitemap <loc> when CloudFront uses AllViewerExceptHostHeader (Host at Lambda is execute-api).
 #     TEACHER_IMAGE_CDN_BASE — public origin for teacher photos (assets CloudFront / `teachers/*` keys); no trailing slash.
 #       Match ASSETS_CLOUDFRONT_ALIAS (e.g. https://assets-math-stage.afj-solution.com).
+#     SES_SENDER — verified From address for review emails (match infra/ses Terraform sender_address output).
+#     SES_SENDER_DOMAIN — used only by Terraform SES stack (e.g. afj-solution.com).
 #   Naming: Serverless --stage is stage (development branch) or prod (main), matching TF_VAR_environment.
 #
 # Client static site (same branch → environment as Serverless API):
@@ -56,6 +58,12 @@
 #     ASSETS_ACM_CERTIFICATE_ARN — ACM in us-east-1 covering ASSETS_CLOUDFRONT_ALIAS (can match site cert if SANs include assets hosts)
 #     ASSETS_CLOUDFRONT_ALIAS — stage: assets-math-stage.afj-solution.com; prod: assets-math.afj-solution.com
 #   Optional: CLOUDFRONT_S3_DATA_BUCKET — overrides math-history-server-data-<stage|prod>
+#
+# SES (Terraform, for POST /api/reviews admin notifications):
+#   Per-environment secret: AWS_SES_ROLE_TO_ASSUME — OIDC role with ses:CreateEmailIdentity, ses:GetEmailIdentity, ses:PutEmailIdentity*
+#   Per-environment variable (required): SES_SENDER_DOMAIN — e.g. afj-solution.com (Terraform module verifies domain + DKIM)
+#   Per-environment variable (required for Serverless deploy): SES_SENDER — must match Terraform output sender_address (e.g. no-reply@afj-solution.com)
+#   After first apply: publish dkim_dns_records from `terraform output -json` in DNS; request SES production access to email unverified recipients.
 
 name: Deploy application
 
@@ -167,10 +175,42 @@ jobs:
           state-key: s3-data/${{ steps.target.outputs.tf_env }}.tfstate
           tf-environment: ${{ steps.target.outputs.tf_env }}
 
+  deploy-ses:
+    name: Terraform apply (SES)
+    runs-on: ubuntu-24.04
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'stage' }}
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      TF_VAR_sender_domain: ${{ vars.SES_SENDER_DOMAIN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Resolve target environment
+        id: target
+        run: |
+          if [ "${GITHUB_REF}" = "refs/heads/main" ]; then
+            echo "tf_env=prod" >> "$GITHUB_OUTPUT"
+          else
+            echo "tf_env=stage" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Apply SES stack
+        uses: ./.github/actions/terraform-aws-apply
+        with:
+          working-directory: infra/ses
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_SES_ROLE_TO_ASSUME }}
+          expected-aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
+          state-bucket: ${{ vars.TF_STATE_BUCKET }}
+          lock-table: ${{ vars.TF_LOCK_TABLE }}
+          state-key: ses/${{ steps.target.outputs.tf_env }}.tfstate
+          tf-environment: ${{ steps.target.outputs.tf_env }}
+
   deploy-server:
     name: Deploy server (Serverless)
     runs-on: ubuntu-24.04
-    needs: [deploy-dynamodb, deploy-cognito, deploy-s3-image-bucket]
+    needs: [deploy-dynamodb, deploy-cognito, deploy-s3-image-bucket, deploy-ses]
     environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'stage' }}
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
@@ -234,6 +274,9 @@ jobs:
           CORS_ORIGIN: ${{ vars.CORS_ORIGIN || vars.VITE_SITE_URL }}
           SITE_URL: ${{ vars.VITE_SITE_URL }}
           TEACHER_IMAGE_CDN_BASE: ${{ vars.TEACHER_IMAGE_CDN_BASE }}
+          COGNITO_USER_POOL_ID: ${{ secrets.VITE_COGNITO_USER_POOL_ID }}
+          SES_SENDER: ${{ vars.SES_SENDER }}
+          SES_REGION: ${{ env.AWS_REGION }}
           SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
         run: |
           set -euo pipefail

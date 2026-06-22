@@ -23,6 +23,7 @@ const PUBLIC_DESCRIPTION = `
 | GET | /api/graduates/specialties | Distinct student specialties |
 | GET | /api/graduates/{year} | Year detail; \`cursor=1\` + \`limit\` paginates merged student list |
 | GET | /api/gratitudes | Reserved list (cursor shape; empty until populated) |
+| POST | /api/reviews | Public content feedback; notifies admins by email |
 | GET | /api/layout | Public layout / field visibility config |
 | GET | /sitemap.xml | Dynamic XML sitemap (teachers, graduates, static pages) |
 
@@ -147,6 +148,44 @@ export const handler = async (ctx: Engine) => {
 					security: [],
 					responses: {
 						200: { description: '{ gratitudes: [], lastEvaluatedKey: null }' },
+					},
+				},
+			},
+			'/api/reviews': {
+				post: {
+					tags: ['Public'],
+					summary: 'Submit public content review',
+					description:
+						'Visitor feedback about a site component (teacher card, graduate photo, page section). Persists the review and emails Cognito admins via SES.',
+					security: [],
+					requestBody: {
+						required: true,
+						content: {
+							'application/json': {
+								schema: {
+									type: 'object',
+									required: ['email', 'comment', 'component'],
+									properties: {
+										email: { type: 'string', format: 'email' },
+										comment: { type: 'string', minLength: 3, maxLength: 2000 },
+										component: {
+											type: 'object',
+											required: ['type', 'label'],
+											properties: {
+												type: { type: 'string', enum: ['teacher', 'graduate', 'page', 'other'] },
+												id: { type: 'string' },
+												label: { type: 'string' },
+												url: { type: 'string', format: 'uri' },
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+					responses: {
+						201: { description: '{ ok: true, id: string }' },
+						400: { description: 'Validation error' },
 					},
 				},
 			},
