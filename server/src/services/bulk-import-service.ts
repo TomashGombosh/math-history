@@ -186,6 +186,37 @@ export async function getJob(jobId: string): Promise<BulkJobMeta | null> {
 	return item ? toJobMeta(item) : null;
 }
 
+export async function setJobProcessing(jobId: string, totalChunks: number): Promise<void> {
+	await updateBulkItem({
+		Key: { pk: jobPk(jobId), sk: jobMetaSk() },
+		UpdateExpression: 'SET #status = :processing, totalChunks = :total',
+		ExpressionAttributeNames: { '#status': 'status' },
+		ExpressionAttributeValues: {
+			':processing': 'processing',
+			':total': totalChunks,
+		},
+	});
+}
+
+export async function markJobFailed(jobId: string, error?: string): Promise<void> {
+	const updates: Omit<Parameters<typeof updateBulkItem>[0], 'Key'> = error
+		? {
+				UpdateExpression: 'SET #status = :failed, #error = :error',
+				ExpressionAttributeNames: { '#status': 'status', '#error': 'error' },
+				ExpressionAttributeValues: { ':failed': 'failed', ':error': error },
+			}
+		: {
+				UpdateExpression: 'SET #status = :failed',
+				ExpressionAttributeNames: { '#status': 'status' },
+				ExpressionAttributeValues: { ':failed': 'failed' },
+			};
+
+	await updateBulkItem({
+		Key: { pk: jobPk(jobId), sk: jobMetaSk() },
+		...updates,
+	});
+}
+
 export interface AcquireGlobalLockInput {
 	jobId: string;
 	createdBy: string;
