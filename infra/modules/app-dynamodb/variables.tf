@@ -49,6 +49,12 @@ variable "enable_point_in_time_recovery" {
   default     = false
 }
 
+variable "ttl_attribute_name" {
+  type        = string
+  description = "DynamoDB TTL attribute name. Leave empty to leave TTL disabled (default for existing tables)."
+  default     = ""
+}
+
 variable "tags" {
   type        = map(string)
   description = "Additional tags for the table."
