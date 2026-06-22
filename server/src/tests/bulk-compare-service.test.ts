@@ -12,7 +12,8 @@ import type { BulkExtractResult } from '@services/bulk-extract-service';
 import { slugify } from '@services/slug';
 
 const DYNAMODB_ENDPOINT = process.env.DYNAMODB_ENDPOINT?.trim();
-const MAIN_TABLE = process.env.DYNAMODB_TABLE_NAME?.trim() || 'math-history-ddb-local';
+/** Isolated from CI `math-history-ddb-local` (app.js integration) — never delete the shared table. */
+const MAIN_TABLE = 'math-history-ddb-bulk-compare-test';
 
 let integrationReady = false;
 let skipReason =
@@ -149,17 +150,26 @@ function itIntegration(name: string, fn: () => Promise<void>): void {
 }
 
 describe('bulk-compare-service', () => {
+	let previousMainTableName: string | undefined;
+
 	beforeAll(async () => {
 		if (!DYNAMODB_ENDPOINT || !ddbAdmin) {
 			return;
 		}
 		try {
 			await ddbAdmin.send(new ListTablesCommand({ Limit: 1 }));
+			previousMainTableName = process.env.DYNAMODB_TABLE_NAME;
 			process.env.DYNAMODB_TABLE_NAME = MAIN_TABLE;
 			await ensureMainTable();
 			integrationReady = true;
 		} catch {
 			skipReason = `DynamoDB Local not reachable at ${DYNAMODB_ENDPOINT}. Start: docker compose -f docker-compose.test.yml up -d dynamodb`;
+		}
+	});
+
+	afterAll(() => {
+		if (previousMainTableName !== undefined) {
+			process.env.DYNAMODB_TABLE_NAME = previousMainTableName;
 		}
 	});
 
