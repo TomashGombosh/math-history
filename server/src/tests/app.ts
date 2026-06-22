@@ -51,6 +51,7 @@ describe('api', () => {
 			'api/teachers/_id/delete',
 			'api/graduates/get',
 			'api/gratitudes/get',
+			'api/reviews/post',
 			'api/graduates/years/get',
 			'api/graduates/specialties/get',
 			'api/graduates/_year/get',

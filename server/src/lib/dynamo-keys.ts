@@ -5,6 +5,7 @@ export const PK = {
 	GRADUATE: 'GRADUATE',
 	CONFIG: 'CONFIG',
 	META: 'META',
+	REVIEW: 'REVIEW',
 } as const;
 
 export function teacherSortKey(id: number): string {
@@ -29,4 +30,9 @@ export function parseGraduateYearCohort(sk: string): { year: number; cohortId: n
 
 export function gsi1SlugKeys(slug: string, teacherSk: string): { gsi1pk: string; gsi1sk: string } {
 	return { gsi1pk: `SLUG#${slug}`, gsi1sk: teacherSk };
+}
+
+/** Sort key for review items; ISO timestamp + uuid keeps rows unique and roughly chronological. */
+export function reviewSortKey(createdAtIso: string, id: string): string {
+	return `R#${createdAtIso}#${id}`;
 }

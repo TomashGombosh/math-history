@@ -87,6 +87,20 @@ provider:
             - Fn::Sub:
                 - 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${DynamoTable}/index/*'
                 - DynamoTable: ${self:custom.dynamodbTableName}
+        - Effect: Allow
+          Action:
+            - ses:SendEmail
+          Resource: "*"
+          Condition:
+            StringEquals:
+              ses:FromAddress: ${env:SES_SENDER, ''}
+        - Effect: Allow
+          Action:
+            - cognito-idp:ListUsersInGroup
+          Resource:
+            Fn::Sub:
+              - 'arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${PoolId}'
+              - PoolId: ${env:COGNITO_USER_POOL_ID, ''}
   stackTags:
     Name: "math-history-server"
   environment:
@@ -102,6 +116,10 @@ provider:
     SITE_URL: ${env:SITE_URL, ''}
     # Assets CDN / public host for teacher images (presign response `imageUrl`; no trailing slash)
     TEACHER_IMAGE_CDN_BASE: ${env:TEACHER_IMAGE_CDN_BASE, ''}
+    COGNITO_USER_POOL_ID: ${env:COGNITO_USER_POOL_ID, ''}
+    SES_SENDER: ${env:SES_SENDER, ''}
+    SES_REGION: ${env:SES_REGION, '${aws:region}'}
+    REVIEW_NOTIFY_FALLBACK: ${env:REVIEW_NOTIFY_FALLBACK, ''}
 
 functions:
   imageDerivatives:
@@ -173,6 +191,9 @@ functions:
       - httpApi:
           path: /api/gratitudes
           method: GET
+      - httpApi:
+          path: /api/reviews
+          method: POST
       - httpApi:
           path: /api/graduates/{year}
           method: GET

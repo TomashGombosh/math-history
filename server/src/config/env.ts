@@ -40,6 +40,10 @@ export const envSchema = z
 		SITE_URL: optionalTrimmed(),
 		/** Public origin for teacher photos (data bucket / assets CDN). No trailing slash. Used to build full `imageUrl` after presigned upload. */
 		TEACHER_IMAGE_CDN_BASE: optionalTrimmed(),
+		COGNITO_USER_POOL_ID: optionalTrimmed(),
+		SES_SENDER: optionalTrimmed(),
+		SES_REGION: optionalTrimmed(),
+		REVIEW_NOTIFY_FALLBACK: optionalTrimmed(),
 	})
 	.superRefine((data, ctx) => {
 		const usesLocalDynamo = Boolean(data.DYNAMODB_ENDPOINT);
