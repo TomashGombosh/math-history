@@ -86,3 +86,41 @@ export type LayoutConfigResponse = {
   headerFields: Array<{ id: string; label: string; visible: boolean; order: number }>;
   sections: Array<{ id: string; title: string; visible: boolean; order: number }>;
 };
+
+/** Staged entity kind in a bulk `.docx` import job. */
+export type BulkImportEntity = "teacher" | "graduate" | "year";
+
+/** One candidate row returned when a bulk import job reaches `success`. */
+export type BulkImportItem = {
+  id: string;
+  entity: BulkImportEntity;
+  name?: string;
+  year?: number;
+};
+
+/** Aggregate counts for staged candidates (also shown while `in_progress`). */
+export type BulkImportCounts = {
+  teachers: number;
+  graduates: number;
+  years: number;
+};
+
+/** External lifecycle status for GET /api/admin/bulk-imports/{id}. */
+export type BulkImportStatus = "in_progress" | "success" | "failed" | "cancelled";
+
+/** POST /api/admin/bulk-imports — job id + presigned upload for the source `.docx`. */
+export type BulkImportCreateResponse = {
+  jobId: string;
+  uploadUrl: string;
+  headers: Record<string, string>;
+};
+
+/** GET /api/admin/bulk-imports/{id} — poll until terminal status. */
+export type BulkImportStatusResponse = {
+  status: BulkImportStatus;
+  counts: BulkImportCounts;
+  candidates: BulkImportItem[];
+  /** Optional pagination cursor if API supports it later */
+  lastEvaluatedKey?: string | null;
+  error?: string;
+};
