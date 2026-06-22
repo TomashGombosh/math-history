@@ -61,6 +61,10 @@ describe('api', () => {
 			'api/upload/presign/post',
 			'api/admin/bulk-imports/post',
 			'api/admin/bulk-imports/_id/get',
+			'api/admin/bulk-imports/_id/delete',
+			'api/admin/bulk-imports/_id/commit/post',
+			'api/admin/bulk-imports/_id/items/_itemId/put',
+			'api/admin/bulk-imports/_id/items/_itemId/delete',
 		] as const);
 
 	for (const module of tests) {
