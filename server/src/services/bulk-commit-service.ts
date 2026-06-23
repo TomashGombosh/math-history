@@ -7,9 +7,13 @@ import {
 	listCandidates,
 	type BulkCandidate,
 } from '@services/bulk-import-service';
-import { normalizeName } from '@services/bulk-extract-service';
-import { createGraduate, getCohortByYear, updateGraduateByYear } from '@services/graduate-service';
-import { createTeacher } from '@services/teacher-service';
+import {
+	appendGraduatesToYearInSession,
+	createGraduateCommitSessionFromRows,
+	ensureYearShellInSession,
+} from '@services/graduate-commit-session';
+import { queryAllGraduateItems } from '@services/graduate-service';
+import { createTeacherForBulkImport, loadTeacherSlugSet } from '@services/teacher-service';
 
 const COMMIT_PAGE_SIZE = 100;
 
@@ -20,18 +24,6 @@ function isConditionalFailure(err: unknown): boolean {
 		'name' in err &&
 		(err as { name: string }).name === 'ConditionalCheckFailedException'
 	);
-}
-
-function yearTitle(year: number): string {
-	return `Випуск ${year} року`;
-}
-
-function graduateNameExists(students: unknown[], name: string): boolean {
-	const normalizedNew = normalizeName(name).toLowerCase();
-	return students.some((st) => {
-		const raw = (st as Record<string, unknown>).name ?? (st as Record<string, unknown>).text ?? '';
-		return normalizeName(String(raw)).toLowerCase() === normalizedNew;
-	});
 }
 
 async function tryBeginCommit(jobId: string): Promise<boolean> {
@@ -82,78 +74,19 @@ async function tryBeginCommit(jobId: string): Promise<boolean> {
 	}
 }
 
-async function commitTeacher(name: string, jobId: string): Promise<void> {
+async function commitTeacherWithSlugSet(
+	slugSet: Set<string>,
+	name: string,
+	jobId: string,
+): Promise<void> {
 	try {
-		await createTeacher({ name });
+		await createTeacherForBulkImport(slugSet, name);
 	} catch (err) {
 		if (err instanceof Error && err.message === 'SLUG_CONFLICT') {
 			logWarn('bulk commit skipped existing teacher', { jobId, name });
 			return;
 		}
 		throw err;
-	}
-}
-
-async function commitGraduate(name: string, year: number, jobId: string): Promise<void> {
-	const existing = await getCohortByYear(year);
-	if (!existing) {
-		await createGraduate({
-			year,
-			title: yearTitle(year),
-			students: [{ name, specialty: '', section: '' }],
-		});
-		return;
-	}
-
-	const currentStudents = Array.isArray(existing.students) ? existing.students : [];
-	if (graduateNameExists(currentStudents, name)) {
-		return;
-	}
-
-	await updateGraduateByYear(year, {
-		year,
-		title: String(existing.title || yearTitle(year)),
-		images: Array.isArray(existing.images) ? existing.images : [],
-		students: [...currentStudents, { name, specialty: '', section: '' }],
-	});
-}
-
-async function commitYearOnly(year: number): Promise<void> {
-	if (await getCohortByYear(year)) {
-		return;
-	}
-
-	// createGraduate requires at least one student; year-only creates a shell cohort with minimal title.
-	await createGraduate({
-		year,
-		title: yearTitle(year),
-		students: [{ name: '\u200B', specialty: '', section: '' }],
-	});
-}
-
-async function commitCandidate(candidate: BulkCandidate, jobId: string): Promise<void> {
-	switch (candidate.entity) {
-		case 'teacher': {
-			if (!candidate.name?.trim()) {
-				throw new Error('CANDIDATE_INVALID');
-			}
-			await commitTeacher(candidate.name, jobId);
-			break;
-		}
-		case 'graduate': {
-			if (!candidate.name?.trim() || candidate.year == null) {
-				throw new Error('CANDIDATE_INVALID');
-			}
-			await commitGraduate(candidate.name, candidate.year, jobId);
-			break;
-		}
-		case 'year': {
-			if (candidate.year == null) {
-				throw new Error('CANDIDATE_INVALID');
-			}
-			await commitYearOnly(candidate.year);
-			break;
-		}
 	}
 }
 
@@ -174,6 +107,19 @@ async function listAllCandidates(jobId: string): Promise<BulkCandidate[]> {
 	return all;
 }
 
+function groupGraduatesByYear(candidates: BulkCandidate[]): Map<number, string[]> {
+	const byYear = new Map<number, string[]>();
+	for (const candidate of candidates) {
+		if (candidate.entity !== 'graduate' || candidate.year == null || !candidate.name?.trim()) {
+			throw new Error('CANDIDATE_INVALID');
+		}
+		const list = byYear.get(candidate.year) ?? [];
+		list.push(candidate.name);
+		byYear.set(candidate.year, list);
+	}
+	return byYear;
+}
+
 export async function commitBulkImportJob(jobId: string): Promise<void> {
 	logInfo('bulk commit started', { jobId });
 
@@ -189,14 +135,29 @@ export async function commitBulkImportJob(jobId: string): Promise<void> {
 		const graduates = candidates.filter((c) => c.entity === 'graduate');
 		const years = candidates.filter((c) => c.entity === 'year');
 
-		for (const candidate of teachers) {
-			await commitCandidate(candidate, jobId);
-		}
-		for (const candidate of graduates) {
-			await commitCandidate(candidate, jobId);
-		}
+		// One graduate table read + one teacher slug scan — not once per candidate.
+		const [graduateRows, teacherSlugSet] = await Promise.all([
+			queryAllGraduateItems(),
+			loadTeacherSlugSet(),
+		]);
+		const graduateSession = createGraduateCommitSessionFromRows(graduateRows);
+
 		for (const candidate of years) {
-			await commitCandidate(candidate, jobId);
+			if (candidate.year == null) {
+				throw new Error('CANDIDATE_INVALID');
+			}
+			await ensureYearShellInSession(graduateSession, candidate.year);
+		}
+
+		for (const [year, names] of groupGraduatesByYear(graduates)) {
+			await appendGraduatesToYearInSession(graduateSession, year, names);
+		}
+
+		for (const candidate of teachers) {
+			if (!candidate.name?.trim()) {
+				throw new Error('CANDIDATE_INVALID');
+			}
+			await commitTeacherWithSlugSet(teacherSlugSet, candidate.name, jobId);
 		}
 
 		await updateBulkItem({

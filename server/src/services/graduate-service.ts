@@ -41,7 +41,7 @@ export async function queryAllGraduateItemsForYear(yearNum: number): Promise<Gra
 	return out.sort((a, b) => a.id - b.id);
 }
 
-async function queryAllGraduateItems(correlation?: CorrelationIds): Promise<GraduateItem[]> {
+export async function queryAllGraduateItems(correlation?: CorrelationIds): Promise<GraduateItem[]> {
 	const t0 = Date.now();
 	const base = { ...correlation, service: 'math-history-server' as const };
 	logInfo('graduate:queryAll:start', {
