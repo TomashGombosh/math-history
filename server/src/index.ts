@@ -56,7 +56,9 @@ export const handler = async (event: any, context: Context) => {
 	const method = rawMethod as IRequest['method'];
 
 	const rawPath = (event.rawPath ?? event.path ?? '') as string;
-	const pathOnly = rawPath.split('?')[0].split('#')[0];
+	// Do not split on '#': URL fragments never reach the server, but decoded path
+	// segments (e.g. bulk-import candidate SKs like CAND#GRAD#2006#…) contain '#'.
+	const pathOnly = rawPath.split('?')[0];
 	const pathSegments = pathOnly.split('/').filter(Boolean);
 
 	const headers = Object.fromEntries(
