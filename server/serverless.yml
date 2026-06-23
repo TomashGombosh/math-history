@@ -227,6 +227,8 @@ functions:
           functionResponseType: ReportBatchItemFailures
   api:
     handler: .build/index.handler
+    memorySize: 512
+    timeout: 29
     events:
       # Public routes (no JWT at the gateway — same as publicResource in code)
       - httpApi:
