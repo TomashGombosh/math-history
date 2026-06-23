@@ -471,7 +471,9 @@ export async function incrementProcessedChunks(jobId: string): Promise<{ process
 		Key: { pk: jobPk(jobId), sk: jobMetaSk() },
 		UpdateExpression: 'ADD processedChunks :one',
 		ExpressionAttributeValues: { ':one': 1 },
-		ReturnValues: 'UPDATED_NEW',
+		// ALL_NEW (not UPDATED_NEW): we need totalChunks too, and ADD only returns
+		// the attribute it touched (processedChunks), leaving totalChunks undefined.
+		ReturnValues: 'ALL_NEW',
 	});
 
 	const processedChunks = Number(res.Attributes?.processedChunks ?? 0);

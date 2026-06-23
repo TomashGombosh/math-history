@@ -12,9 +12,11 @@ import {
 	cleanupJob,
 	createJob,
 	getJob,
+	incrementProcessedChunks,
 	listCandidates,
 	mapInternalStatusToExternal,
 	releaseGlobalLock,
+	setJobProcessing,
 	upsertCandidate,
 	upsertTeacherCandidate,
 } from '@services/bulk-import-service';
@@ -171,6 +173,26 @@ describe('bulk-import-service', () => {
 		expect(await listCandidates({ jobId: job.jobId })).toEqual({ candidates: [] });
 
 		await expect(acquireGlobalLock({ jobId: job.jobId, createdBy: 'admin' })).resolves.toBeUndefined();
+	});
+
+	itIntegration('flips status to ready once the final chunk is processed', async () => {
+		const job = await createJob({ createdBy: 'admin' });
+		await setJobProcessing(job.jobId, 3);
+
+		const first = await incrementProcessedChunks(job.jobId);
+		expect(first.processedChunks).toBe(1);
+		expect(first.status).toBeUndefined();
+
+		const second = await incrementProcessedChunks(job.jobId);
+		expect(second.processedChunks).toBe(2);
+		expect(second.status).toBeUndefined();
+
+		const third = await incrementProcessedChunks(job.jobId);
+		expect(third.processedChunks).toBe(3);
+		expect(third.status).toBe('ready');
+
+		const meta = await getJob(job.jobId);
+		expect(meta?.status).toBe('ready');
 	});
 
 	it('maps internal statuses to external statuses', () => {
