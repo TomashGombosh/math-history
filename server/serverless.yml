@@ -196,8 +196,10 @@ functions:
   bulkSplit:
     handler: .build/handlers/s3-bulk-split.handler
     description: S3 ObjectCreated on bulk-imports/*.docx → split chunks + enqueue SQS
-    memorySize: 1024
-    timeout: 120
+    # mammoth holds the full docx + document model in heap; at 1024MB large docs OOM
+    # and GC-thrash. More memory = proportionally more vCPU, so this also cuts duration.
+    memorySize: 2048
+    timeout: 180
     reservedConcurrency: 2
     package:
       individually: true

@@ -180,26 +180,28 @@ export async function splitBulkImportSource(bucket: string, key: string, jobId: 
 		return;
 	}
 
-	const docxBuffer = await readDocxFromS3(bucket, key);
-	const text = await extractDocxText(docxBuffer);
+	let docxBuffer: Buffer | null = await readDocxFromS3(bucket, key);
+	let text: string | null = await extractDocxText(docxBuffer);
+	// Release the raw docx before splitting/uploading; only the text is needed now.
+	docxBuffer = null;
+
 	const chunkTexts = splitTextIntoChunks(text);
+	text = null;
 	const texts = chunkTexts.length > 0 ? chunkTexts : [''];
 	const totalChunks = texts.length;
 
-	const chunkKeys: string[] = [];
-	for (let index = 0; index < texts.length; index += 1) {
+	for (let index = 0; index < totalChunks; index += 1) {
 		const chunkKey = bulkImportChunkKey(jobId, index);
 		await writeChunkToS3(bucket, chunkKey, { text: texts[index], index });
-		chunkKeys.push(chunkKey);
 	}
 
 	await setJobProcessing(jobId, totalChunks);
 
-	for (let index = 0; index < chunkKeys.length; index += 1) {
+	for (let index = 0; index < totalChunks; index += 1) {
 		await enqueueChunkMessage({
 			jobId,
 			bucket,
-			chunkKey: chunkKeys[index],
+			chunkKey: bulkImportChunkKey(jobId, index),
 			chunkIndex: index,
 		});
 	}
