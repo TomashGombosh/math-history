@@ -63,4 +63,34 @@ module.exports = (wrapped: any, expect: any, requestContext: any) =>
 			const page = await listCandidates({ jobId: job.jobId });
 			expect(page.candidates).toHaveLength(0);
 		});
+
+		it('deletes a candidate when path contains decoded hash characters (API Gateway rawPath)', async () => {
+			if (!integrationReady) {
+				console.warn(`SKIPPED bulk-import DELETE item hash path: ${bulkHttpSkipReason}`);
+				return;
+			}
+
+			const job = await createJob({ createdBy: 'admin' });
+			const candidate = await upsertCandidate({
+				entity: 'graduate',
+				jobId: job.jobId,
+				name: 'Hash Path Grad',
+				year: 2012,
+			});
+			await markJobReady(job.jobId);
+
+			expect(candidate.id).toContain('#');
+
+			// API Gateway passes URL-decoded rawPath; do not rely on %23 in the path segment.
+			const res = await wrapped.run({
+				requestContext: adminRC,
+				path: `/api/admin/bulk-imports/${job.jobId}/items/${candidate.id}`,
+				method: 'DELETE',
+				headers: { 'Content-Type': 'application/json' },
+			});
+			expect(res.statusCode).toBe(200);
+
+			const page = await listCandidates({ jobId: job.jobId });
+			expect(page.candidates).toHaveLength(0);
+		});
 	});
