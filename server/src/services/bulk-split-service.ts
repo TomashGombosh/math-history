@@ -1,12 +1,12 @@
-import { buffer as streamToBuffer } from 'node:stream/consumers';
-import { Readable } from 'node:stream';
-import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
-import mammoth from 'mammoth';
 import { logException, logInfo } from '@lib/lambda-log';
 import { getS3Client } from '@lib/s3-client';
 import { awsSdkLogger } from '@lib/aws-sdk-logger';
+import { extractDocxTextFromS3 } from '@services/docx-extract';
 import { getJob, markJobFailed, setJobProcessing } from '@services/bulk-import-service';
+
+export { extractDocxText } from '@services/docx-extract';
 
 /** Max characters per chunk before starting a new chunk. */
 export const BULK_CHUNK_MAX_CHARS = 6000;
@@ -60,23 +60,6 @@ export function parseBulkImportSourceKey(key: string): BulkImportSourceKey | nul
 
 export function bulkImportChunkKey(jobId: string, index: number): string {
 	return `bulk-imports/${jobId}/chunks/chunk-${index}.json`;
-}
-
-async function getObjectBodyBuffer(body: unknown): Promise<Buffer> {
-	if (!body) return Buffer.alloc(0);
-	const anyBody = body as { transformToByteArray?: () => Promise<Uint8Array> };
-	if (typeof anyBody.transformToByteArray === 'function') {
-		return Buffer.from(await anyBody.transformToByteArray());
-	}
-	if (body instanceof Readable) {
-		return streamToBuffer(body);
-	}
-	return Buffer.alloc(0);
-}
-
-export async function extractDocxText(buffer: Buffer): Promise<string> {
-	const result = await mammoth.extractRawText({ buffer });
-	return result.value.trim();
 }
 
 /** Split plain text into chunks by paragraph boundaries and size limits. */
@@ -133,21 +116,6 @@ export function splitTextIntoChunks(text: string): string[] {
 	return chunks;
 }
 
-async function readDocxFromS3(bucket: string, key: string): Promise<Buffer> {
-	const s3 = getS3Client();
-	const out = await s3.send(
-		new GetObjectCommand({
-			Bucket: bucket,
-			Key: key,
-		}),
-	);
-	const body = await getObjectBodyBuffer(out.Body);
-	if (!body.length) {
-		throw new Error('EMPTY_SOURCE_DOCX');
-	}
-	return body;
-}
-
 async function writeChunkToS3(bucket: string, chunkKey: string, payload: BulkChunkPayload): Promise<void> {
 	const s3 = getS3Client();
 	await s3.send(
@@ -180,13 +148,8 @@ export async function splitBulkImportSource(bucket: string, key: string, jobId: 
 		return;
 	}
 
-	let docxBuffer: Buffer | null = await readDocxFromS3(bucket, key);
-	let text: string | null = await extractDocxText(docxBuffer);
-	// Release the raw docx before splitting/uploading; only the text is needed now.
-	docxBuffer = null;
-
+	const text = await extractDocxTextFromS3(bucket, key);
 	const chunkTexts = splitTextIntoChunks(text);
-	text = null;
 	const texts = chunkTexts.length > 0 ? chunkTexts : [''];
 	const totalChunks = texts.length;
 

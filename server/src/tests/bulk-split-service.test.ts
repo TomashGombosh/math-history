@@ -29,9 +29,38 @@ import {
 	resetBulkSplitSqsClientForTests,
 	splitTextIntoChunks,
 } from '@services/bulk-split-service';
+import { documentXmlToText } from '@services/docx-extract';
 import { getJob, markJobFailed, setJobProcessing } from '@services/bulk-import-service';
 
 const fixtureDocxPath = path.join(process.cwd(), 'src/tests/fixtures/minimal-bulk.docx');
+
+/**
+ * Serve the docx fixture over the range-request access pattern used by
+ * S3ByteSource: HeadObject → ContentLength, ranged GetObject → byte slice.
+ * Returns recorded PutObject calls (chunk writes).
+ */
+function mockS3WithDocxFixture(docxBuffer: Buffer): Array<{ Bucket: string; Key: string; Body: string }> {
+	const putCalls: Array<{ Bucket: string; Key: string; Body: string }> = [];
+	(mockS3Send as jest.Mock).mockImplementation(
+		async (command: { input?: { Body?: string; Range?: string; Key?: string; Bucket?: string } }) => {
+			const input = command.input ?? {};
+			if (input.Body !== undefined) {
+				putCalls.push(input as { Bucket: string; Key: string; Body: string });
+				return {};
+			}
+			if (input.Range) {
+				const match = /bytes=(\d+)-(\d+)/.exec(input.Range);
+				if (!match) throw new Error(`unexpected Range: ${input.Range}`);
+				const start = Number(match[1]);
+				const end = Number(match[2]);
+				const slice = docxBuffer.subarray(start, end + 1);
+				return { Body: { transformToByteArray: async () => slice } };
+			}
+			return { ContentLength: docxBuffer.length };
+		},
+	);
+	return putCalls;
+}
 
 describe('bulk-split-service', () => {
 	beforeEach(() => {
@@ -71,6 +100,28 @@ describe('bulk-split-service', () => {
 		});
 	});
 
+	describe('documentXmlToText', () => {
+		it('joins runs within a paragraph and separates paragraphs with blank lines', () => {
+			const xml =
+				'<w:document><w:body>' +
+				'<w:p><w:r><w:t>Hello </w:t></w:r><w:r><w:t>world</w:t></w:r></w:p>' +
+				'<w:p><w:r><w:t>Second</w:t></w:r></w:p>' +
+				'</w:body></w:document>';
+			expect(documentXmlToText(xml)).toBe('Hello world\n\nSecond');
+		});
+
+		it('unescapes entities and honors xml:space runs, tabs and breaks', () => {
+			const xml =
+				'<w:p><w:r><w:t xml:space="preserve">A &amp; B</w:t><w:tab/><w:t>C</w:t><w:br/><w:t>D</w:t></w:r></w:p>';
+			expect(documentXmlToText(xml)).toBe('A & B\tC\nD');
+		});
+
+		it('ignores text outside w:t runs (e.g. field codes)', () => {
+			const xml = '<w:p><w:instrText>HYPERLINK foo</w:instrText><w:r><w:t>Keep</w:t></w:r></w:p>';
+			expect(documentXmlToText(xml)).toBe('Keep');
+		});
+	});
+
 	describe('extractDocxText', () => {
 		it('reads paragraphs from a minimal docx fixture', async () => {
 			const buffer = readFileSync(fixtureDocxPath);
@@ -88,7 +139,6 @@ describe('bulk-split-service', () => {
 
 		it('writes chunks, sets processing before SQS, and sends one message per chunk', async () => {
 			const docxBuffer = readFileSync(fixtureDocxPath);
-			const putCalls: Array<{ Bucket: string; Key: string; Body: string }> = [];
 			const sendOrder: string[] = [];
 
 			(getJob as jest.Mock).mockResolvedValue({
@@ -103,13 +153,7 @@ describe('bulk-split-service', () => {
 			(mockSqsSend as jest.Mock).mockImplementation(async () => {
 				sendOrder.push('sqs');
 			});
-			(mockS3Send as jest.Mock).mockImplementation(async (command: { input?: { Body?: string; Key?: string; Bucket?: string } }) => {
-				if (command.input?.Body !== undefined) {
-					putCalls.push(command.input as { Bucket: string; Key: string; Body: string });
-					return {};
-				}
-				return { Body: { transformToByteArray: async () => docxBuffer } };
-			});
+			const putCalls = mockS3WithDocxFixture(docxBuffer);
 
 			await handleBulkSourceUploaded(bucket, key);
 
@@ -166,10 +210,7 @@ describe('s3-bulk-split handler', () => {
 			totalChunks: 0,
 			processedChunks: 0,
 		});
-		(mockS3Send as jest.Mock).mockImplementation(async (command: { input?: { Body?: string } }) => {
-			if (command.input?.Body !== undefined) return {};
-			return { Body: { transformToByteArray: async () => docxBuffer } };
-		});
+		mockS3WithDocxFixture(docxBuffer);
 
 		const event: S3Event = {
 			Records: [
