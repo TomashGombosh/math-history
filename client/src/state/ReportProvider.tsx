@@ -14,12 +14,11 @@ const ReportProvider = ({children}:Props) => {
     useEffect(() => {
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         if (isMobile) return;
-
+        
         const handleKeyDown = (e: globalThis.KeyboardEvent) => {
             if (e.key === "r" && e.ctrlKey) {
-
+                
                 e.preventDefault();
-                console.log(hoveredComponent)
                 if (hoveredComponent){
                     setSelectedComponent(hoveredComponent)
                     setOpen(true);

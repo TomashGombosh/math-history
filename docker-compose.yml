@@ -13,21 +13,6 @@
 #   server/.env → DYNAMODB_ENDPOINT=http://127.0.0.1:8000 S3_ENDPOINT=http://127.0.0.1:9000
 #   AWS_ACCESS_KEY_ID=local AWS_SECRET_ACCESS_KEY=locallocal
 
-# Local stack: DynamoDB + MinIO + Serverless API + React client.
-# For CI / server integration tests only, see docker-compose.test.yml.
-#
-# Usage (repo root):
-#   docker compose up --build
-#
-#   React client:  http://localhost:5173
-#   Serverless API: http://localhost:3000
-#   DynamoDB Local: http://127.0.0.1:8000
-#   MinIO (S3):    http://127.0.0.1:9000  (console :9001)
-#
-# Host-only API/dev (containers already up):
-#   server/.env → DYNAMODB_ENDPOINT=http://127.0.0.1:8000 S3_ENDPOINT=http://127.0.0.1:9000
-#   AWS_ACCESS_KEY_ID=local AWS_SECRET_ACCESS_KEY=locallocal
-
 services:
   dynamodb:
     image: amazon/dynamodb-local:latest
@@ -49,7 +34,6 @@ services:
       AWS_SECRET_ACCESS_KEY: local
       AWS_DEFAULT_REGION: eu-north-1
       AWS_EC2_METADATA_DISABLED: "true"
-      AWS_EC2_METADATA_DISABLED: "true"
     volumes:
       - ./server/migration/table.json:/migration/table.json:ro
     restart: "no"
@@ -60,19 +44,12 @@ services:
         ENDPOINT=http://dynamodb:8000
         i=0
         while [ "$$i" -lt 60 ]; do
-        i=0
-        while [ "$$i" -lt 60 ]; do
           if aws dynamodb list-tables --endpoint-url "$$ENDPOINT" >/dev/null 2>&1; then
             break
           fi
           i=$$((i + 1))
-          i=$$((i + 1))
           sleep 1
         done
-        if [ "$$i" -ge 60 ]; then
-          echo "DynamoDB did not become ready in time"
-          exit 1
-        fi
         if [ "$$i" -ge 60 ]; then
           echo "DynamoDB did not become ready in time"
           exit 1
@@ -83,53 +60,6 @@ services:
         fi
         aws dynamodb create-table --cli-input-json file:///migration/table.json --endpoint-url "$$ENDPOINT"
         echo "DynamoDB table math-history-ddb-local created."
-
-  dynamodb-seed:
-    image: node:20-alpine
-    container_name: math-history-dynamodb-seed
-    working_dir: /app/server
-    depends_on:
-      dynamodb-migrate:
-        condition: service_completed_successfully
-    environment:
-      AWS_REGION: eu-north-1
-      AWS_ACCESS_KEY_ID: local
-      AWS_SECRET_ACCESS_KEY: local
-      DYNAMODB_TABLE_NAME: math-history-ddb-local
-      DYNAMODB_ENDPOINT: http://dynamodb:8000
-    volumes:
-      - ./:/app
-      - /app/server/node_modules
-    restart: "no"
-    entrypoint: ["/bin/sh", "-ec"]
-    command:
-      - |
-        set -e
-        npm install --silent
-        ENDPOINT="http://dynamodb:8000"
-        TABLE="math-history-ddb-local"
-        if node -e "
-          const { DynamoDBClient, GetItemCommand } = require('@aws-sdk/client-dynamodb');
-          const client = new DynamoDBClient({
-            region: process.env.AWS_REGION,
-            endpoint: process.env.DYNAMODB_ENDPOINT,
-            credentials: { accessKeyId: 'local', secretAccessKey: 'local' },
-          });
-          client
-            .send(new GetItemCommand({
-              TableName: process.env.DYNAMODB_TABLE_NAME,
-              Key: { pk: { S: 'CONFIG' }, sk: { S: 'LAYOUT' } },
-            }))
-            .then((r) => process.exit(r.Item ? 0 : 1))
-            .catch(() => process.exit(1));
-        "; then
-          echo "DynamoDB seed already present, skipping."
-          exit 0
-        fi
-        node scripts/load-teachers-dynamodb.mjs migration/data/teachers-seed.json "$$TABLE" "$$ENDPOINT"
-        node scripts/load-graduates-dynamodb.mjs migration/data/graduates-seed.json "$$TABLE" "$$ENDPOINT"
-        node scripts/load-layout-dynamodb.mjs migration/data/layout-seed.json "$$TABLE" "$$ENDPOINT"
-        echo "DynamoDB seed complete."
 
   dynamodb-seed:
     image: node:20-alpine
@@ -228,22 +158,10 @@ services:
       S3_DATA_BUCKET: math-history-server-data-local
       S3_ENDPOINT: http://minio:9000
       CORS_ORIGIN: http://localhost:5173
-      NODE_ENV: local
-      AWS_REGION: eu-north-1
-      AWS_ACCESS_KEY_ID: local
-      AWS_SECRET_ACCESS_KEY: locallocal
-      DYNAMODB_TABLE_NAME: math-history-ddb-local
-      DYNAMODB_ENDPOINT: http://dynamodb:8000
-      S3_DATA_BUCKET: math-history-server-data-local
-      S3_ENDPOINT: http://minio:9000
-      CORS_ORIGIN: http://localhost:5173
     ports:
-      - "3000:3000"
       - "3000:3000"
     volumes:
       - ./:/app
-      - /app/server/node_modules
-    command: sh -c "npm install && npm run dev"
       - /app/server/node_modules
     command: sh -c "npm install && npm run dev"
 
@@ -253,12 +171,10 @@ services:
     working_dir: /app/client
     depends_on:
       server:
-      server:
         condition: service_started
     environment:
       NODE_ENV: development
       VITE_SITE_URL: http://localhost:5173
-      VITE_API_URL: http://localhost:3000
       VITE_API_URL: http://localhost:3000
     ports:
       - "5173:5173"
