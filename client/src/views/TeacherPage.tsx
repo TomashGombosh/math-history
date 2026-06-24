@@ -27,8 +27,12 @@ import Reportable from "../components/Reportable";
 
 function TeacherProfile({ slug }: { slug: string }) {
   /** `undefined` = load in progress; `null` = not found; otherwise loaded. */
-  const [teacher, setTeacher] = useState<TeacherPageState | null | undefined>(undefined);
-  const [layout, setLayout] = useState<LayoutConfigResponse>(() => normalizeTeacherPageLayout({}));
+  const [teacher, setTeacher] = useState<TeacherPageState | null | undefined>(
+    undefined,
+  );
+  const [layout, setLayout] = useState<LayoutConfigResponse>(() =>
+    normalizeTeacherPageLayout({}),
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -108,11 +112,17 @@ function TeacherProfile({ slug }: { slug: string }) {
       />
       <div className="header">
         <div className="photo">
-          {teacher.imageUrl ? 
-            <Reportable componentName="фото викладача">
+          {teacher.imageUrl ? (
+            <Reportable
+              component={{
+                type: "page",
+                label: `Фото викладача: ${teacher.name}`,
+                url: pageUrl,
+              }}
+            >
               <img src={teacher.imageUrl} alt={teacher.name} />
-            </Reportable> 
-            : null}
+            </Reportable>
+          ) : null}
         </div>
         <div className="info">
           <h1>{teacher.name}</h1>
@@ -121,10 +131,18 @@ function TeacherProfile({ slug }: { slug: string }) {
         </div>
       </div>
       {sortedSections.map((sec) => {
-        if (!sec.visible || !teacherHasSectionContent(teacher, sec.id)) return null;
+        if (!sec.visible || !teacherHasSectionContent(teacher, sec.id))
+          return null;
         if (sec.id === "shortInformation") {
           return (
-            <Reportable componentName="коротка інформація про викладача" key={sec.id}>
+            <Reportable
+              component={{
+                type: "page",
+                label: `Коротка інформація про ${teacher.name}`,
+                url: pageUrl,
+              }}
+              key={sec.id}
+            >
               <section className="section">
                 <h2>{sec.title}</h2>
                 <p className="multiline">{teacher.shortInformation ?? ""}</p>
@@ -134,7 +152,14 @@ function TeacherProfile({ slug }: { slug: string }) {
         }
         if (sec.id === "bio") {
           return (
-            <Reportable componentName="біографія викладача" key={sec.id}>
+            <Reportable
+              component={{
+                type: "page",
+                label: `Біографія ${teacher.name}`,
+                url: pageUrl,
+              }}
+              key={sec.id}
+            >
               <section className="section">
                 <h2>{sec.title}</h2>
                 <p className="multiline">{teacher.bio ?? ""}</p>
@@ -147,13 +172,22 @@ function TeacherProfile({ slug }: { slug: string }) {
             .map((raw, i) => parsePublicationEntry(raw, i))
             .filter((p): p is NonNullable<typeof p> => p != null);
           return (
-            <Reportable componentName="публікації викладача" key={sec.id}>
+            <Reportable
+              component={{
+                type: "page",
+                label: `Публікації викладача: ${teacher.name}`,
+                url: pageUrl,
+              }}
+              key={sec.id}
+            >
               <section className="section">
                 <h2>{sec.title}</h2>
                 <ol className="pub-list">
                   {pubs.map((pub) => (
                     <li key={pub.key}>
-                      {pub.year != null && pub.year !== "" ? <span>({pub.year}) </span> : null}
+                      {pub.year != null && pub.year !== "" ? (
+                        <span>({pub.year}) </span>
+                      ) : null}
                       {pub.text}
                     </li>
                   ))}

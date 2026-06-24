@@ -3,15 +3,21 @@ import { useReport } from "../state/ReportContenxt";
 
 type ReportableProps = {
     children: ReactNode;
-    componentName: string;
+    component:{
+      type: "teacher" | "graduate" | "page" | "other";
+      id?: string;
+      label:string;
+      url?: string;
+
+    };
 }
 
-const Reportable = ({ children, componentName }: ReportableProps) => {
+const Reportable = ({ children, component }: ReportableProps) => {
 
     const {setHoveredComponent} = useReport();
   return (
     <div
-      onMouseEnter={() => setHoveredComponent(componentName)}
+      onMouseEnter={() => setHoveredComponent(component)}
       onMouseLeave={() => setHoveredComponent(null)}
     >
       {children}

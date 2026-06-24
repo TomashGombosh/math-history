@@ -16,7 +16,12 @@ import type { TeacherDto, TeachersCursorResponse } from "../lib/apiTypes";
 import "./TeachersPage.css";
 import Reportable from "../components/Reportable";
 
-type Teacher = { id: number; slug: string; name: string; imageUrl?: string | null };
+type Teacher = {
+  id: number;
+  slug: string;
+  name: string;
+  imageUrl?: string | null;
+};
 
 const PAGE_SIZE = 24;
 
@@ -37,7 +42,10 @@ export default function TeachersPage() {
 
   useEffect(() => {
     let cancelled = false;
-    void apiGet<TeachersCursorResponse>("/api/teachers", { cursor: 1, limit: PAGE_SIZE })
+    void apiGet<TeachersCursorResponse>("/api/teachers", {
+      cursor: 1,
+      limit: PAGE_SIZE,
+    })
       .then((r) => {
         if (cancelled) return;
         setTeachers(mapTeachers(r.teachers));
@@ -77,7 +85,8 @@ export default function TeachersPage() {
 
   const siteUrl = getSiteUrl();
   const pageUrl = `${siteUrl}${ROUTES.teachers}`;
-  const description = "Список викладачів-математиків Ужгородського національного університету.";
+  const description =
+    "Список викладачів-математиків Ужгородського національного університету.";
 
   return (
     <div className="page-wrapper">
@@ -110,9 +119,21 @@ export default function TeachersPage() {
           <>
             <div className="grid">
               {teachers.map((t) => (
-                <Reportable componentName={`Карточка викладача: ${t.name}`} key={t.id}>
+                <Reportable
+                  component={{
+                    id: t.id.toString(),
+                    label: `Карточка викладача: ${t.name}`,
+                    type: "teacher",
+                    url: pageUrl,
+                  }}
+                  key={t.id}
+                >
                   <Link to={ROUTES.teacherSlug(t.slug)} className="card">
-                    <div className="image-wrapper">{t.imageUrl ? <img src={t.imageUrl} alt={t.name} /> : null}</div>
+                    <div className="image-wrapper">
+                      {t.imageUrl ? (
+                        <img src={t.imageUrl} alt={t.name} />
+                      ) : null}
+                    </div>
                     <div className="name">{t.name}</div>
                   </Link>
                 </Reportable>
@@ -125,7 +146,11 @@ export default function TeachersPage() {
                 </button>
               </div>
             ) : null}
-            {!teachers.length ? <p className="teachers-empty-hint">Інформацію про викладачів не знайдено.</p> : null}
+            {!teachers.length ? (
+              <p className="teachers-empty-hint">
+                Інформацію про викладачів не знайдено.
+              </p>
+            ) : null}
           </>
         )}
       </div>

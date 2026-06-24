@@ -1,8 +1,15 @@
 import { useContext, createContext } from "react";
 
+export type ReportComponent = {
+  type: "teacher" | "graduate" | "page" | "other";
+  id?: string;
+  label: string;
+  url?: string;
+};
+
 type ReportContextValue = {
-  hoveredComponent: string | null;
-  setHoveredComponent: (value: string | null) => void;
+  hoveredComponent: ReportComponent | null;
+  setHoveredComponent: (value: ReportComponent | null) => void;
 };
 
 export const ReportContext = createContext<ReportContextValue | null>(null);

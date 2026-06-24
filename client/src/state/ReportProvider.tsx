@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { ReportContext } from "./ReportContenxt";
+import { ReportContext, type ReportComponent } from "./ReportContenxt";
 import ReportDialog from "../components/ReportDialog";
 
 type Props = {
@@ -7,9 +7,9 @@ type Props = {
 }
 
 const ReportProvider = ({children}:Props) => {
-    const [hoveredComponent, setHoveredComponent] = useState<string | null>(null);
+    const [hoveredComponent, setHoveredComponent] = useState<ReportComponent | null>(null);
     const [open, setOpen] = useState<boolean>(false)
-    const [selectedComponent, setSelectedComponent] = useState<string | null>(null);
+    const [selectedComponent, setSelectedComponent] = useState<ReportComponent | null>(null);
 
     useEffect(() => {
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -17,8 +17,9 @@ const ReportProvider = ({children}:Props) => {
 
         const handleKeyDown = (e: globalThis.KeyboardEvent) => {
             if (e.key === "r" && e.ctrlKey) {
-                e.preventDefault();
 
+                e.preventDefault();
+                console.log(hoveredComponent)
                 if (hoveredComponent){
                     setSelectedComponent(hoveredComponent)
                     setOpen(true);
@@ -41,7 +42,7 @@ const ReportProvider = ({children}:Props) => {
         {children}
         <ReportDialog 
             open={open} 
-            componentName={selectedComponent || ""} 
+            component={selectedComponent} 
             onClose={() => {
                 setOpen(false);
                 setSelectedComponent(null);

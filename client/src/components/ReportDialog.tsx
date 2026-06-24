@@ -1,21 +1,37 @@
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Typography } from "@mui/material";
 import { useState } from "react";
+import type { ReportComponent } from "../state/ReportContenxt";
 
 type Props = {
     open: boolean;
-    componentName: string;
+    component: ReportComponent | null;
     onClose: () => void;
 }
 
-const ReportDialog = ({ open, componentName, onClose }: Props) => {
+type PayloadType = { 
+    email:string;
+    comment:string;
+    component: ReportComponent
+}
+
+const ReportDialog = ({ open, component, onClose }: Props) => {
     const [email, setEmail] = useState<string>("");
     const [comment, setComment] = useState<string>("")
     const handleSubmit = async () => {
-        console.log(JSON.stringify({
+        if (!component) return;
+
+        const payload:PayloadType = {
             email,
             comment,
-            component: componentName
-        }))
+            component:{
+                type: component?.type,
+                id: component?.id,
+                label:component?.label,
+                url: component?.url
+                
+            }
+        }
+        console.log(payload)
 
         setEmail("");
         setComment("");
@@ -30,7 +46,7 @@ const ReportDialog = ({ open, componentName, onClose }: Props) => {
         </DialogTitle>
         <DialogContent>
             <Typography mb={2}>
-                Компонент: <strong>{componentName}</strong>
+                Компонент: <strong>{component?.label}</strong>
             </Typography>
             <TextField
                 label="Email"
