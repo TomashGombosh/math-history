@@ -116,6 +116,7 @@ function TeacherProfile({ slug }: { slug: string }) {
             <Reportable
               component={{
                 type: "page",
+                id: teacher.name,
                 label: `Фото викладача: ${teacher.name}`,
                 url: pageUrl,
               }}
@@ -139,6 +140,7 @@ function TeacherProfile({ slug }: { slug: string }) {
               component={{
                 type: "page",
                 label: `Коротка інформація про ${teacher.name}`,
+                id:teacher.name ,
                 url: pageUrl,
               }}
               key={sec.id}
@@ -156,6 +158,7 @@ function TeacherProfile({ slug }: { slug: string }) {
               component={{
                 type: "page",
                 label: `Біографія ${teacher.name}`,
+                id: teacher.name,
                 url: pageUrl,
               }}
               key={sec.id}
@@ -175,6 +178,7 @@ function TeacherProfile({ slug }: { slug: string }) {
             <Reportable
               component={{
                 type: "page",
+                id: teacher.name,
                 label: `Публікації викладача: ${teacher.name}`,
                 url: pageUrl,
               }}

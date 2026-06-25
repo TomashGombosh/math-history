@@ -180,7 +180,7 @@ export default function HomePage() {
                 <Reportable
                   key={t.id}
                   component={{
-                    id: t.id.toString(),
+                    id: t.slug,
                     label: `Карточка викладача ${t.name}`,
                     type: "teacher",
                     url: pageUrl,

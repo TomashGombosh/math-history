@@ -121,7 +121,7 @@ export default function TeachersPage() {
               {teachers.map((t) => (
                 <Reportable
                   component={{
-                    id: t.id.toString(),
+                    id: t.slug,
                     label: `Карточка викладача: ${t.name}`,
                     type: "teacher",
                     url: pageUrl,
