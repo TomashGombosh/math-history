@@ -1,6 +1,19 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import ReportDialog from "../../components/ReportDialog";
+import type { ReportComponent } from "../../state/ReportContenxt";
+import { apiPost } from "../../lib/api";
+
+vi.mock("../../lib/api", () => ({
+  apiPost: vi.fn().mockResolvedValue({}),
+}));
+
+const component: ReportComponent = {
+  type: "teacher",
+  id: "test-id",
+  label: "TestComponent",
+  url: "https://example.com/teacher/test-id",
+};
 
 describe("ReportDialog", () => {
   const onClose = vi.fn();
@@ -10,25 +23,13 @@ describe("ReportDialog", () => {
   });
 
   it("should render component name", () => {
-    render(
-      <ReportDialog
-        open
-        componentName="TestComponent"
-        onClose={onClose}
-      />
-    );
+    render(<ReportDialog open component={component} onClose={onClose} />);
 
     expect(screen.getByText("TestComponent")).toBeInTheDocument();
   });
 
   it("should call onClose when cancel button is clicked", () => {
-    render(
-      <ReportDialog
-        open
-        componentName="TestComponent"
-        onClose={onClose}
-      />
-    );
+    render(<ReportDialog open component={component} onClose={onClose} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Скасувати" }));
 
@@ -36,13 +37,7 @@ describe("ReportDialog", () => {
   });
 
   it("should update form fields", () => {
-    render(
-      <ReportDialog
-        open
-        componentName="TestComponent"
-        onClose={onClose}
-      />
-    );
+    render(<ReportDialog open component={component} onClose={onClose} />);
 
     const emailInput = screen.getByLabelText("Email");
     const commentInput = screen.getByLabelText("Коментар");
@@ -60,17 +55,7 @@ describe("ReportDialog", () => {
   });
 
   it("should submit form, clear fields and close dialog", async () => {
-    const consoleSpy = vi
-      .spyOn(console, "log")
-      .mockImplementation(() => {});
-
-    render(
-      <ReportDialog
-        open
-        componentName="TestComponent"
-        onClose={onClose}
-      />
-    );
+    render(<ReportDialog open component={component} onClose={onClose} />);
 
     const emailInput = screen.getByLabelText("Email");
     const commentInput = screen.getByLabelText("Коментар");
@@ -83,32 +68,30 @@ describe("ReportDialog", () => {
       target: { value: "Test comment" },
     });
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Надіслати" })
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Надіслати" }));
 
-    expect(consoleSpy).toHaveBeenCalledWith(
-      JSON.stringify({
-        email: "test@example.com",
-        comment: "Test comment",
-        component: "TestComponent",
-      })
-    );
+    expect(apiPost).toHaveBeenCalledWith("api/reviews", {
+      email: "test@example.com",
+      comment: "Test comment",
+      component: {
+        type: component.type,
+        id: component.id,
+        label: component.label,
+        url: component.url,
+      },
+    });
+
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalledOnce();
+    });
 
     expect(emailInput).toHaveValue("");
     expect(commentInput).toHaveValue("");
-    expect(onClose).toHaveBeenCalledOnce();
-
-    consoleSpy.mockRestore();
   });
 
   it("should not render dialog when closed", () => {
     render(
-      <ReportDialog
-        open={false}
-        componentName="TestComponent"
-        onClose={onClose}
-      />
+      <ReportDialog open={false} component={component} onClose={onClose} />
     );
 
     expect(
