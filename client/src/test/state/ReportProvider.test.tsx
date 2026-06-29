@@ -2,11 +2,11 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, expect, it, beforeEach, vi } from "vitest";
 import ReportProvider from "../../state/ReportProvider";
 import { useContext } from "react";
-import { ReportContext } from "../../state/ReportContenxt";
+import { ReportContext, type ReportComponent } from "../../state/ReportContenxt";
 
 type ReportDialogProps = {
   open: boolean;
-  componentName: string;
+  component: ReportComponent | null;
   onClose: () => void;
 };
 
@@ -19,12 +19,19 @@ vi.mock("../../components/ReportDialog", () => ({
     return props.open ? (
       <div>
         <span>Dialog Open</span>
-        <span>{props.componentName}</span>
+        <span>{props.component?.label}</span>
         <button onClick={props.onClose}>Close</button>
       </div>
     ) : null;
   },
 }));
+
+const testComponent: ReportComponent = {
+  type: "teacher",
+  id: "test-id",
+  label: "TestComponent",
+  url: "https://example.com/teacher/test-id",
+};
 
 function TestComponent() {
   const context = useContext(ReportContext);
@@ -33,11 +40,7 @@ function TestComponent() {
     <div>
       <span>Child Component</span>
 
-      <button
-        onMouseEnter={() =>
-          context?.setHoveredComponent("TestComponent")
-        }
-      >
+      <button onMouseEnter={() => context?.setHoveredComponent(testComponent)}>
         Hover Me
       </button>
     </div>
