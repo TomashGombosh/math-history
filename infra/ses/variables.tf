@@ -36,6 +36,12 @@ variable "enable_mail_from" {
   default     = false
 }
 
+variable "manage_email_identity" {
+  type        = bool
+  description = "Create the SES domain identity. Set false when the domain is already verified in SES."
+  default     = false
+}
+
 variable "tags" {
   type        = map(string)
   description = "Additional tags passed to the SES module."
