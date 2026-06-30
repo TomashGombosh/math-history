@@ -2,7 +2,7 @@ module.exports = {
   rootDir: '.',
   testEnvironment: 'node',
   roots: ['<rootDir>/.build'],
-  testMatch: ['<rootDir>/.build/tests/app.js', '<rootDir>/.build/tests/image-derivative-keys.test.js'],
+  testMatch: ['<rootDir>/.build/config/env.test.js', '<rootDir>/.build/tests/app.js', '<rootDir>/.build/tests/bulk-compare-service.test.js', '<rootDir>/.build/tests/bulk-extract-service.test.js', '<rootDir>/.build/tests/bulk-import-service.test.js', '<rootDir>/.build/tests/bulk-commit-service.test.js', '<rootDir>/.build/tests/bulk-process-service.test.js', '<rootDir>/.build/tests/bulk-split-service.test.js', '<rootDir>/.build/tests/image-derivative-keys.test.js', '<rootDir>/.build/tests/review-email-template.test.js'],
   modulePaths: ['<rootDir>/.build'],
   collectCoverage: true,
   coverageDirectory: '/tmp/coverage',

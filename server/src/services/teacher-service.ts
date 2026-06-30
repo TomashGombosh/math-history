@@ -2,7 +2,7 @@ import { PK, gsi1SlugKeys, teacherSortKey } from '@lib/dynamo-keys';
 import { deleteItem, getItem, putItem, queryItems } from '@lib/dynamo-operations';
 import type { TeacherCreateBody, TeacherPublic, TeacherUpdateBody } from '@models/teacher';
 import { nextTeacherId } from '@services/counters';
-import { createUniqueSlug } from '@services/slug';
+import { createUniqueSlug, slugify } from '@services/slug';
 
 const DEFAULT_TEACHER_IMAGE_URL = '/profile-icon.webp';
 
@@ -128,6 +128,73 @@ export async function createTeacher(body: TeacherCreateBody): Promise<TeacherPub
 	} catch (e: unknown) {
 		const name = e && typeof e === 'object' && 'name' in e ? String((e as { name?: string }).name) : '';
 		if (name === 'ConditionalCheckFailedException') {
+			throw new Error('SLUG_CONFLICT');
+		}
+		throw e;
+	}
+
+	return toPublic(item);
+}
+
+export async function loadTeacherSlugSet(): Promise<Set<string>> {
+	const items = await queryAllTeacherItems();
+	return new Set(items.map((t) => t.slug));
+}
+
+function reserveSlugFromSet(slugSet: Set<string>, name: string): string {
+	let base = slugify(name);
+	if (!base) base = 'teacher';
+
+	let slug = base;
+	let counter = 1;
+	while (slugSet.has(slug)) {
+		counter += 1;
+		slug = `${base}-${counter}`;
+	}
+	slugSet.add(slug);
+	return slug;
+}
+
+/** Bulk import: reserve slug from preloaded set (no per-teacher GSI lookups). */
+export async function createTeacherForBulkImport(slugSet: Set<string>, name: string): Promise<TeacherPublic> {
+	const trimmedName = name.trim();
+	if (!trimmedName) {
+		throw new Error('NAME_REQUIRED');
+	}
+
+	const slug = reserveSlugFromSet(slugSet, trimmedName);
+	const id = await nextTeacherId();
+	const sk = teacherSortKey(id);
+	const gsi = gsi1SlugKeys(slug, sk);
+
+	const item: TeacherItem = {
+		pk: PK.TEACHER,
+		sk,
+		entityType: 'Teacher',
+		id,
+		name: trimmedName,
+		slug,
+		faculty: '',
+		position: '',
+		title: '',
+		academicDegree: '',
+		shortInformation: '',
+		bio: '',
+		publications: [],
+		imageUrl: DEFAULT_TEACHER_IMAGE_URL,
+		gsi1pk: gsi.gsi1pk,
+		gsi1sk: gsi.gsi1sk,
+	};
+
+	try {
+		await putItem({
+			Item: item,
+			ConditionExpression: 'attribute_not_exists(pk) AND attribute_not_exists(sk)',
+		});
+	} catch (e: unknown) {
+		slugSet.delete(slug);
+		const errName = e && typeof e === 'object' && 'name' in e ? String((e as { name?: string }).name) : '';
+		if (errName === 'ConditionalCheckFailedException') {
 			throw new Error('SLUG_CONFLICT');
 		}
 		throw e;

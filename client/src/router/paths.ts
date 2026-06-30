@@ -16,6 +16,8 @@ export const ROUTES = {
   adminGraduatesCreate: "/admin/graduates/create",
   adminGraduateYearEdit: (year: string | number) =>
     `/admin/graduates/${encodeURIComponent(String(year))}/edit`,
+  adminImports: "/admin/imports",
+  adminImportJob: (id: string) => `/admin/imports/${encodeURIComponent(id)}`,
 } as const;
 
 /** Parametrized segments for `RouteObject` (relative to layout parent). */
@@ -24,6 +26,7 @@ export const ROUTE_PATTERNS = {
   graduatesYear: "graduates/:year",
   adminTeacherEdit: "teachers/:id/edit",
   adminGraduateYearEdit: "graduates/:year/edit",
+  adminImportJob: "imports/:jobId",
 } as const;
 
 /** React Router nested `path` under `/` (no leading slash). */

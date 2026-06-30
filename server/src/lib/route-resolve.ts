@@ -45,6 +45,33 @@ export function resolveModulePath(
 		}
 	}
 
+	const bulkImportId = /^api\/admin\/bulk-imports\/([^/]+)$/.exec(joined);
+	if (bulkImportId && m === 'get') {
+		return { modulePath: 'api/admin/bulk-imports/_id/get', pathParams: { id: bulkImportId[1] } };
+	}
+	if (bulkImportId && m === 'delete') {
+		return { modulePath: 'api/admin/bulk-imports/_id/delete', pathParams: { id: bulkImportId[1] } };
+	}
+
+	const bulkImportCommit = /^api\/admin\/bulk-imports\/([^/]+)\/commit$/.exec(joined);
+	if (bulkImportCommit && m === 'post') {
+		return { modulePath: 'api/admin/bulk-imports/_id/commit/post', pathParams: { id: bulkImportCommit[1] } };
+	}
+
+	const bulkImportItem = /^api\/admin\/bulk-imports\/([^/]+)\/items\/([^/]+)$/.exec(joined);
+	if (bulkImportItem && m === 'put') {
+		return {
+			modulePath: 'api/admin/bulk-imports/_id/items/_itemId/put',
+			pathParams: { id: bulkImportItem[1], itemId: bulkImportItem[2] },
+		};
+	}
+	if (bulkImportItem && m === 'delete') {
+		return {
+			modulePath: 'api/admin/bulk-imports/_id/items/_itemId/delete',
+			pathParams: { id: bulkImportItem[1], itemId: bulkImportItem[2] },
+		};
+	}
+
 	if (!joined || !m) {
 		return null;
 	}

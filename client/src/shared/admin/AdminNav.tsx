@@ -46,6 +46,9 @@ export function AdminNav() {
             <Link to={ROUTES.adminGraduates} className="admin-sub-link">Таблиця випусків</Link>
             <Link to={ROUTES.adminGraduatesCreate} className="admin-sub-link">Додати випуск</Link>
           </div>
+          <div className="admin-column">
+            <Link to={ROUTES.adminImports} className="admin-sub-link">Імпорт з DOCX</Link>
+          </div>
         </div>
       ) : null}
     </header>

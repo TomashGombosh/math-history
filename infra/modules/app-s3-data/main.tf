@@ -55,3 +55,24 @@ resource "aws_s3_bucket_cors_configuration" "data" {
     max_age_seconds = 3600
   }
 }
+
+resource "aws_s3_bucket_lifecycle_configuration" "data" {
+  bucket = aws_s3_bucket.data.id
+
+  rule {
+    id     = "expire-bulk-imports"
+    status = "Enabled"
+
+    filter {
+      prefix = "bulk-imports/"
+    }
+
+    expiration {
+      days = 2
+    }
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 1
+    }
+  }
+}

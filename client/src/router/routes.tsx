@@ -20,6 +20,8 @@ const AdminLayoutSettingsPage = lazy(() => import("../views/admin/AdminLayoutSet
 const AdminGraduatesListPage = lazy(() => import("../views/admin/AdminGraduatesListPage"));
 const AdminGraduateCreatePage = lazy(() => import("../views/admin/AdminGraduateCreatePage"));
 const AdminGraduateYearEditPage = lazy(() => import("../views/admin/AdminGraduateYearEditPage"));
+const AdminImportStartPage = lazy(() => import("../views/admin/imports/AdminImportStartPage"));
+const AdminImportJobPage = lazy(() => import("../views/admin/imports/AdminImportJobPage"));
 
 export const appRoutes: RouteObject[] = [
   {
@@ -64,6 +66,14 @@ export const appRoutes: RouteObject[] = [
           {
             path: ROUTE_PATTERNS.adminGraduateYearEdit,
             element: <AdminGraduateYearEditPage />,
+          },
+          {
+            path: rrAdminChild(ROUTES.adminImports),
+            element: <AdminImportStartPage />,
+          },
+          {
+            path: ROUTE_PATTERNS.adminImportJob,
+            element: <AdminImportJobPage />,
           },
         ],
       },

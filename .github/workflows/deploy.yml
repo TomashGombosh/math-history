@@ -1,4 +1,4 @@
-# Deploys infra stacks after merge. Branch → GitHub Environment:
+# Triggers: push to development/main, or manual workflow_dispatch (branch selects environment).
 #   development → environment "stage" (stage AWS)
 #   main        → environment "production" (prod AWS)
 #
@@ -11,9 +11,19 @@
 # Repository variable (optional): AWS_REGION (default eu-north-1 in jobs below).
 #
 # Bootstrap once per account: create the state bucket and lock table, and IAM roles
-# trusted by GitHub OIDC (DynamoDB, Cognito, S3 data bucket, Serverless deploy, etc.).
+# trusted by GitHub OIDC (DynamoDB, DynamoDB bulk import, SQS, Cognito, S3 data bucket, Serverless deploy, etc.).
 #
 # Per-environment secret for S3 uploads bucket stack: AWS_S3_DATA_ROLE_TO_ASSUME
+#
+# Bulk import DynamoDB table (Terraform, parallel to main DynamoDB stack):
+#   Per-environment secret: AWS_DYNAMODB_BULK_ROLE_TO_ASSUME — OIDC role with DynamoDB table create/update on bulk table
+#
+# Bulk import SQS queue + DLQ (Terraform):
+#   Per-environment secret: AWS_SQS_ROLE_TO_ASSUME — OIDC role with SQS queue create/update
+#   Per-environment variables (required for Serverless deploy after first SQS apply):
+#     BULK_QUEUE_URL — main queue URL (terraform output from infra/sqs)
+#     BULK_DLQ_URL — dead-letter queue URL (terraform output from infra/sqs)
+#   Optional variable: BULK_BEDROCK_ENABLED — set to true to enable Bedrock extraction (default false in CI)
 #
 # Serverless deploy job (same branch → environment as Terraform):
 #   Per-environment secrets: AWS_SERVERLESS_ROLE_TO_ASSUME, AWS_ACCOUNT_ID
@@ -21,11 +31,16 @@
 #   Per-environment variables (recommended):
 #     COGNITO_JWT_ISSUER, COGNITO_JWT_AUDIENCE — HTTP API JWT authorizer (per-environment secrets; match Terraform Cognito outputs)
 #     SECURITY_GROUP_ID, SUBNET_ID — Lambda VPC (required by server/serverless.yml)
-#     CORS_ORIGIN — optional browser origin for API CORS
+#     CORS_ORIGIN — optional browser origin for API CORS (defaults to VITE_SITE_URL when unset)
 #     SITE_URL — same canonical public origin as VITE_SITE_URL (https://CLOUDFRONT_ALIAS, no trailing slash).
 #       Required for correct sitemap <loc> when CloudFront uses AllViewerExceptHostHeader (Host at Lambda is execute-api).
 #     TEACHER_IMAGE_CDN_BASE — public origin for teacher photos (assets CloudFront / `teachers/*` keys); no trailing slash.
 #       Match ASSETS_CLOUDFRONT_ALIAS (e.g. https://assets-math-stage.afj-solution.com).
+#     SES_SENDER — verified From address for review emails (match infra/ses Terraform sender_address output).
+#     SES_SENDER_DOMAIN — used only by Terraform SES stack (e.g. afj-solution.com).
+#     BULK_QUEUE_URL, BULK_DLQ_URL — from infra/sqs Terraform outputs (see bulk SQS section above).
+#     BULK_BEDROCK_ENABLED — optional; defaults to false when unset.
+#   BULK_DDB_TABLE is derived in CI as math-history-server-bulkimport-ddb-<stage|prod> (matches infra/dynamodb-bulk).
 #   Naming: Serverless --stage is stage (development branch) or prod (main), matching TF_VAR_environment.
 #
 # Client static site (same branch → environment as Serverless API):
@@ -56,6 +71,12 @@
 #     ASSETS_ACM_CERTIFICATE_ARN — ACM in us-east-1 covering ASSETS_CLOUDFRONT_ALIAS (can match site cert if SANs include assets hosts)
 #     ASSETS_CLOUDFRONT_ALIAS — stage: assets-math-stage.afj-solution.com; prod: assets-math.afj-solution.com
 #   Optional: CLOUDFRONT_S3_DATA_BUCKET — overrides math-history-server-data-<stage|prod>
+#
+# SES (Terraform, for POST /api/reviews admin notifications):
+#   Per-environment secret: AWS_SES_ROLE_TO_ASSUME — OIDC role with ses:CreateEmailIdentity, ses:GetEmailIdentity, ses:PutEmailIdentity*
+#   Per-environment variable (required): SES_SENDER_DOMAIN — e.g. afj-solution.com (Terraform module verifies domain + DKIM)
+#   Per-environment variable (required for Serverless deploy): SES_SENDER — must match Terraform output sender_address (e.g. no-reply@afj-solution.com)
+#   After first apply: publish dkim_dns_records from `terraform output -json` in DNS; request SES production access to email unverified recipients.
 
 name: Deploy application
 
@@ -64,6 +85,7 @@ on:
     branches:
       - development
       - main
+  workflow_dispatch:
 
 concurrency:
   group: deploy-infra-${{ github.ref }}
@@ -103,6 +125,68 @@ jobs:
           state-bucket: ${{ vars.TF_STATE_BUCKET }}
           lock-table: ${{ vars.TF_LOCK_TABLE }}
           state-key: dynamodb/${{ steps.target.outputs.tf_env }}.tfstate
+          tf-environment: ${{ steps.target.outputs.tf_env }}
+
+  deploy-dynamodb-bulk:
+    name: Terraform apply (DynamoDB bulk import)
+    runs-on: ubuntu-24.04
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'stage' }}
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Resolve target environment
+        id: target
+        run: |
+          if [ "${GITHUB_REF}" = "refs/heads/main" ]; then
+            echo "tf_env=prod" >> "$GITHUB_OUTPUT"
+          else
+            echo "tf_env=stage" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Apply DynamoDB bulk import stack
+        uses: ./.github/actions/terraform-aws-apply
+        with:
+          working-directory: infra/dynamodb-bulk
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_DYNAMODB_BULK_ROLE_TO_ASSUME }}
+          expected-aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
+          state-bucket: ${{ vars.TF_STATE_BUCKET }}
+          lock-table: ${{ vars.TF_LOCK_TABLE }}
+          state-key: dynamodb-bulk/${{ steps.target.outputs.tf_env }}.tfstate
+          tf-environment: ${{ steps.target.outputs.tf_env }}
+
+  deploy-sqs:
+    name: Terraform apply (SQS bulk import)
+    runs-on: ubuntu-24.04
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'stage' }}
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Resolve target environment
+        id: target
+        run: |
+          if [ "${GITHUB_REF}" = "refs/heads/main" ]; then
+            echo "tf_env=prod" >> "$GITHUB_OUTPUT"
+          else
+            echo "tf_env=stage" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Apply SQS bulk import stack
+        uses: ./.github/actions/terraform-aws-apply
+        with:
+          working-directory: infra/sqs
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_SQS_ROLE_TO_ASSUME }}
+          expected-aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
+          state-bucket: ${{ vars.TF_STATE_BUCKET }}
+          lock-table: ${{ vars.TF_LOCK_TABLE }}
+          state-key: sqs/${{ steps.target.outputs.tf_env }}.tfstate
           tf-environment: ${{ steps.target.outputs.tf_env }}
 
   deploy-cognito:
@@ -167,10 +251,50 @@ jobs:
           state-key: s3-data/${{ steps.target.outputs.tf_env }}.tfstate
           tf-environment: ${{ steps.target.outputs.tf_env }}
 
+  deploy-ses:
+    name: Terraform apply (SES)
+    runs-on: ubuntu-24.04
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'stage' }}
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      TF_VAR_sender_domain: ${{ vars.SES_SENDER_DOMAIN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Resolve target environment
+        id: target
+        run: |
+          if [ "${GITHUB_REF}" = "refs/heads/main" ]; then
+            echo "tf_env=prod" >> "$GITHUB_OUTPUT"
+          else
+            echo "tf_env=stage" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Apply SES stack
+        uses: ./.github/actions/terraform-aws-apply
+        with:
+          working-directory: infra/ses
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_SES_ROLE_TO_ASSUME }}
+          expected-aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
+          state-bucket: ${{ vars.TF_STATE_BUCKET }}
+          lock-table: ${{ vars.TF_LOCK_TABLE }}
+          state-key: ses/${{ steps.target.outputs.tf_env }}.tfstate
+          tf-environment: ${{ steps.target.outputs.tf_env }}
+
   deploy-server:
     name: Deploy server (Serverless)
     runs-on: ubuntu-24.04
-    needs: [deploy-dynamodb, deploy-cognito, deploy-s3-image-bucket]
+    needs:
+      [
+        deploy-dynamodb,
+        deploy-dynamodb-bulk,
+        deploy-sqs,
+        deploy-cognito,
+        deploy-s3-image-bucket,
+        deploy-ses,
+      ]
     environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'stage' }}
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
@@ -231,11 +355,23 @@ jobs:
           NODE_ENV: ${{ steps.target.outputs.node_env }}
           SECURITY_GROUP_ID: ${{ vars.SECURITY_GROUP_ID }}
           SUBNET_ID: ${{ vars.SUBNET_ID }}
-          CORS_ORIGIN: ${{ vars.CORS_ORIGIN }}
+          CORS_ORIGIN: ${{ vars.CORS_ORIGIN || vars.VITE_SITE_URL }}
           SITE_URL: ${{ vars.VITE_SITE_URL }}
           TEACHER_IMAGE_CDN_BASE: ${{ vars.TEACHER_IMAGE_CDN_BASE }}
+          COGNITO_USER_POOL_ID: ${{ secrets.VITE_COGNITO_USER_POOL_ID }}
+          SES_SENDER: ${{ vars.SES_SENDER }}
+          SES_REGION: ${{ env.AWS_REGION }}
+          BULK_DDB_TABLE: math-history-server-bulkimport-ddb-${{ steps.target.outputs.tf_env }}
+          BULK_QUEUE_URL: ${{ vars.BULK_QUEUE_URL }}
+          BULK_QUEUE_ARN: ${{ vars.BULK_QUEUE_ARN }}
+          BULK_DLQ_URL: ${{ vars.BULK_DLQ_URL }}
+          BULK_BEDROCK_ENABLED: ${{ vars.BULK_BEDROCK_ENABLED || 'false' }}
           SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
-        run: npx serverless deploy --stage ${{ steps.target.outputs.tf_env }} --region ${{ env.AWS_REGION }}
+        run: |
+          set -euo pipefail
+          # API Gateway rejects empty allowedOrigins; env var set to "" bypasses Serverless defaults.
+          export CORS_ORIGIN="${CORS_ORIGIN:-${SITE_URL:-http://localhost:5173}}"
+          npx serverless deploy --stage ${{ steps.target.outputs.tf_env }} --region ${{ env.AWS_REGION }}
 
   deploy-client-static:
     name: Deploy client (static site)

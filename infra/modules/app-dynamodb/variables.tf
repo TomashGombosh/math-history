@@ -33,6 +33,12 @@ variable "gsi1_range_key_name" {
   default     = "gsi1sk"
 }
 
+variable "enable_gsi1" {
+  type        = bool
+  description = "Create GSI1 on the table. Set false for tables that only need pk/sk (e.g. bulk-import staging)."
+  default     = true
+}
+
 variable "environment" {
   type        = string
   description = "Deployment environment label (e.g. stage, prod)."
@@ -47,6 +53,12 @@ variable "enable_point_in_time_recovery" {
   type        = bool
   description = "Enable DynamoDB PITR (extra cost; recommended for prod)."
   default     = false
+}
+
+variable "ttl_attribute_name" {
+  type        = string
+  description = "DynamoDB TTL attribute name. Leave empty to leave TTL disabled (default for existing tables)."
+  default     = ""
 }
 
 variable "tags" {

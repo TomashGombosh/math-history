@@ -7,6 +7,7 @@ import { HelmetProvider } from "react-helmet-async";
 import App from "./App";
 import { AuthProvider } from "./state/AuthContext";
 import "./index.css";
+import ReportProvider from "./state/ReportProvider";
 
 const theme = createTheme();
 
@@ -17,7 +18,9 @@ createRoot(document.getElementById("root")!).render(
         <CssBaseline />
         <BrowserRouter>
           <AuthProvider>
-            <App />
+            <ReportProvider>
+              <App />
+            </ReportProvider>
           </AuthProvider>
         </BrowserRouter>
       </ThemeProvider>

@@ -1,3 +1,4 @@
+import '@config/bootstrap-env';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { awsSdkLogger } from '@lib/aws-sdk-logger';

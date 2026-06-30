@@ -51,6 +51,10 @@ describe("AdminHomePage", () => {
       "href",
       ROUTES.adminGraduatesCreate
     );
+    expect(screen.getByRole("link", { name: "Імпорт з DOCX" })).toHaveAttribute(
+      "href",
+      ROUTES.adminImports
+    );
   });
 
   it("should log out and navigate home when Вийти is pressed", async () => {

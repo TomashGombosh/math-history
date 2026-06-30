@@ -1,8 +1,6 @@
+import './bootstrap-env';
 import { z } from 'zod';
 import type { AppConfig, NodeEnv } from './types';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 /** Empty / whitespace-only env → undefined (unset). */
 function optionalTrimmed(message = 'Cannot be empty when set') {
@@ -42,6 +40,15 @@ export const envSchema = z
 		SITE_URL: optionalTrimmed(),
 		/** Public origin for teacher photos (data bucket / assets CDN). No trailing slash. Used to build full `imageUrl` after presigned upload. */
 		TEACHER_IMAGE_CDN_BASE: optionalTrimmed(),
+		COGNITO_USER_POOL_ID: optionalTrimmed(),
+		SES_SENDER: optionalTrimmed(),
+		SES_REGION: optionalTrimmed(),
+		REVIEW_NOTIFY_FALLBACK: optionalTrimmed(),
+		BULK_DDB_TABLE: optionalTrimmed(),
+		BULK_QUEUE_URL: optionalTrimmed(),
+		/** Flag string `"true"` / `"false"`; default off when unset. */
+		BULK_BEDROCK_ENABLED: optionalTrimmed(),
+		BULK_BEDROCK_MODEL_ID: optionalTrimmed(),
 	})
 	.superRefine((data, ctx) => {
 		const usesLocalDynamo = Boolean(data.DYNAMODB_ENDPOINT);
@@ -59,6 +66,20 @@ export const envSchema = z
 				code: 'custom',
 				message: 'S3_DATA_BUCKET is required for presigned uploads and image cleanup in this environment.',
 				path: ['S3_DATA_BUCKET'],
+			});
+		}
+		if (!data.BULK_DDB_TABLE) {
+			ctx.addIssue({
+				code: 'custom',
+				message: 'BULK_DDB_TABLE is required when not using DYNAMODB_ENDPOINT (e.g. Lambda / AWS DynamoDB).',
+				path: ['BULK_DDB_TABLE'],
+			});
+		}
+		if (!data.BULK_QUEUE_URL) {
+			ctx.addIssue({
+				code: 'custom',
+				message: 'BULK_QUEUE_URL is required when not using DYNAMODB_ENDPOINT (e.g. Lambda / AWS DynamoDB).',
+				path: ['BULK_QUEUE_URL'],
 			});
 		}
 	});

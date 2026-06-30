@@ -18,7 +18,7 @@
     "seed:graduates:generate": "node scripts/generate-graduates-seed.mjs",
     "seed:graduates:local": "bash scripts/load-graduates-local.sh",
     "seed:layout:local": "bash scripts/load-layout-local.sh",
-    "serve": "npx sls offline start --host 0.0.0.0 --region eu-north-1",
+    "serve": "node scripts/run-with-env.cjs npx sls offline start --host 0.0.0.0 --region eu-north-1",
     "dev": "npx concurrently -k -n BUILD,SLS 'npm:build:watch' 'npm:serve'"
   },
   "eslintConfig": {
@@ -26,11 +26,15 @@
     "root": false
   },
   "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "3.1022.0",
     "@aws-sdk/client-dynamodb": "3.1022.0",
     "@aws-sdk/client-s3": "3.1022.0",
+    "@aws-sdk/client-sqs": "3.1022.0",
+    "@aws-sdk/client-sesv2": "3.1022.0",
     "@aws-sdk/lib-dynamodb": "3.1022.0",
     "@aws-sdk/s3-request-presigner": "3.1022.0",
     "dotenv": "17.2.3",
+    "mammoth": "^1.9.0",
     "sharp": "^0.34.5",
     "zod": "4.3.6",
     "zod-openapi": "5.4.6"
