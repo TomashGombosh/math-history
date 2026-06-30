@@ -40,6 +40,12 @@ variable "enable_mail_from" {
   default     = false
 }
 
+variable "manage_email_identity" {
+  type        = bool
+  description = "When true, create the SES domain identity. When false, reference an existing identity (e.g. created in console or another stack)."
+  default     = false
+}
+
 variable "tags" {
   type        = map(string)
   description = "Additional tags for SES resources."
