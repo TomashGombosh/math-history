@@ -1,0 +1,119 @@
+.: {}
+api:
+  auth:
+    login:
+      post:
+        is_readme: false
+        is_files: true
+        is_test: false
+        is_covered: false
+  graduates:
+    _year:
+      delete:
+        is_readme: false
+        is_files: true
+        is_test: true
+        is_covered: true
+      get:
+        is_readme: false
+        is_files: true
+        is_test: true
+        is_covered: true
+      put:
+        is_readme: false
+        is_files: true
+        is_test: true
+        is_covered: true
+    get:
+      is_readme: false
+      is_files: true
+      is_test: true
+      is_covered: true
+    post:
+      is_readme: false
+      is_files: true
+      is_test: true
+      is_covered: true
+    specialties:
+      get:
+        is_readme: false
+        is_files: true
+        is_test: true
+        is_covered: true
+    years:
+      get:
+        is_readme: false
+        is_files: true
+        is_test: true
+        is_covered: true
+  layout:
+    get:
+      is_readme: false
+      is_files: true
+      is_test: true
+      is_covered: true
+    put:
+      is_readme: false
+      is_files: true
+      is_test: true
+      is_covered: true
+  teachers:
+    _id:
+      delete:
+        is_readme: false
+        is_files: true
+        is_test: true
+        is_covered: true
+      get:
+        is_readme: false
+        is_files: true
+        is_test: true
+        is_covered: true
+      put:
+        is_readme: false
+        is_files: true
+        is_test: true
+        is_covered: true
+    by-slug:
+      _slug:
+        get:
+          is_readme: false
+          is_files: true
+          is_test: true
+          is_covered: true
+    filters:
+      get:
+        is_readme: false
+        is_files: true
+        is_test: true
+        is_covered: true
+    get:
+      is_readme: false
+      is_files: true
+      is_test: true
+      is_covered: true
+    meta:
+      get:
+        is_readme: false
+        is_files: true
+        is_test: true
+        is_covered: true
+    post:
+      is_readme: false
+      is_files: true
+      is_test: true
+      is_covered: true
+  upload:
+    presign:
+      post:
+        is_readme: false
+        is_files: true
+        is_test: true
+        is_covered: true
+  upload-image: {}
+openapi:
+  get:
+    is_readme: true
+    is_files: true
+    is_test: true
+    is_covered: false
