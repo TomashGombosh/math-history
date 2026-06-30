@@ -9,17 +9,17 @@ output "sender_domain" {
 }
 
 output "email_identity_arn" {
-  value       = aws_sesv2_email_identity.domain.arn
+  value       = local.identity_arn
   description = "ARN of the SES domain identity."
 }
 
 output "verified_for_sending_status" {
-  value       = aws_sesv2_email_identity.domain.verified_for_sending_status
+  value       = local.identity_verified_for_sending
   description = "True when SES can send from this identity (after DNS verification and any sandbox rules)."
 }
 
 output "dkim_status" {
-  value       = try(aws_sesv2_email_identity.domain.dkim_signing_attributes[0].status, null)
+  value       = try(local.identity_dkim_signing_attributes[0].status, null)
   description = "DKIM signing status for the domain identity."
 }
 
